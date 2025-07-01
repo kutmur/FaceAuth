@@ -50,16 +50,70 @@ def main():
         print(f"❌ Enrollment failed: {result['error']}")
     """)
     
-    # Example 4: Check if user exists
-    print("\n🔍 Step 4: User verification")
-    test_user = "john.doe"
-    exists = manager.verify_enrollment(test_user)
-    print(f"User '{test_user}' enrolled: {exists}")
+    # Example 4: Face authentication
+    print("\n🔍 Step 4: Face authentication")
+    print("Note: This would require a camera and enrolled user")
+    print("Example code:")
+    print("""
+    from faceauth.core.authentication import FaceAuthenticator
+    from faceauth.utils.storage import FaceDataStorage
     
-    print("\n✨ Example complete!")
-    print("\nTo try actual enrollment, run:")
-    print("  python main.py enroll-face your-username")
+    # Initialize authenticator
+    storage = FaceDataStorage()
+    authenticator = FaceAuthenticator(storage, similarity_threshold=0.6)
+    
+    # Simple authentication
+    success = authenticator.authenticate("john.doe", timeout=10)
+    print(f"Authentication result: {success}")
+    
+    # Detailed authentication
+    result = authenticator.authenticate_realtime(
+        user_id="john.doe",
+        timeout=10,
+        max_attempts=5
+    )
+    
+    if result['success']:
+        print(f"✅ Authentication successful!")
+        print(f"🎯 Similarity: {result['similarity']:.3f}")
+        print(f"⏱️  Duration: {result['duration']:.2f}s")
+        print(f"🔄 Attempts: {result['attempts']}")
+    else:
+        print(f"❌ Authentication failed: {result['error']}")
+        
+    # Get performance metrics
+    metrics = authenticator.get_performance_metrics()
+    print(f"📊 Average time: {metrics['average_authentication_time']:.2f}s")
+    print(f"📈 False positive rate: {metrics['false_positive_rate']:.1%}")
+    print(f"📉 False negative rate: {metrics['false_negative_rate']:.1%}")
+    """)
+    
+    # Example 5: Error scenarios
+    print("\n⚠️  Step 5: Error handling examples")
+    print("Example code:")
+    print("""
+    # Handle authentication errors
+    result = authenticator.authenticate_realtime("nonexistent_user")
+    
+    if not result['success']:
+        error_type = result.get('error_type')
+        
+        if error_type == 'user_not_found':
+            print("User not enrolled - run enrollment first")
+        elif error_type == 'webcam_error':
+            print("Camera not accessible - check connections")
+        elif error_type == 'timeout':
+            print("Authentication timed out - try again")
+        elif error_type == 'max_attempts_exceeded':
+            print("Too many failed attempts - check threshold")
+    """)
+    
+    print("\n✨ Example completed!")
+    print("\n💡 To see actual enrollment and authentication:")
+    print("   1. Run: python main.py enroll-face your_name")
+    print("   2. Run: python main.py verify-face your_name")
+    print("   3. Run: python auth_demo.py for interactive demo")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

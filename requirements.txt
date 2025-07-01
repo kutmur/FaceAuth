@@ -1,7 +1,7 @@
 # Core dependencies
-opencv-python>=4.8.0
-numpy>=1.24.0
-Pillow>=10.0.0
+opencv-python
+numpy
+insightface
 
 # Deep learning and face recognition
 tensorflow>=2.13.0
@@ -12,9 +12,10 @@ torchvision>=0.15.0
 # Security and encryption
 cryptography>=41.0.0
 bcrypt>=4.0.0
+argon2-cffi>=23.1.0
 
 # CLI and utilities
-click>=8.1.0
+click
 tqdm>=4.65.0
 colorama>=0.4.6
 
