@@ -22,7 +22,10 @@ A **privacy-first** face authentication platform that keeps all face data local.
 - **Robust Detection**: Handles multiple faces, poor lighting, edge cases
 - **Quality Assessment**: Automatic image quality validation
 - **Performance Metrics**: Track false positive/negative rates
-- **CLI Interface**: Easy-to-use command-line interface
+- **Professional CLI**: Production-ready command-line interface with comprehensive help
+- **Configuration Management**: Persistent settings and preferences
+- **Shell Completion**: Auto-completion for bash/zsh shells
+- **File Encryption/Decryption**: Encrypt files using face authentication
 - **Backup/Restore**: Encrypted backup and restore functionality
 - **Cross-Platform**: Works on Windows, macOS, and Linux
 
@@ -41,13 +44,168 @@ cd faceauth
 pip install -r requirements.txt
 ```
 
-3. **Run system check:**
+3. **Initialize configuration:**
+```bash
+python main.py config-commands config-init
+```
+
+4. **Run system check:**
 ```bash
 python main.py system-check
 ```
 
-4. **Try the demo:**
+5. **Install shell completion (optional):**
 ```bash
+python main.py completion-commands install-completion
+```
+
+## 📋 CLI Commands
+
+### Main Commands
+
+#### Face Enrollment
+```bash
+# Basic enrollment
+python main.py enroll-face john.doe
+
+# With custom timeout and storage
+python main.py enroll-face alice@example.com --timeout 45 --storage-dir /custom/path
+
+# Quiet mode for scripting
+python main.py enroll-face user123 --quiet
+```
+
+#### Face Verification
+```bash
+# Basic verification
+python main.py verify-face john.doe
+
+# With custom threshold and detailed metrics
+python main.py verify-face alice@example.com --threshold 0.7 --show-metrics
+
+# Verbose mode with debug info
+python main.py verify-face user123 --verbose --debug
+```
+
+#### File Encryption
+```bash
+# Encrypt a file
+python main.py encrypt-file document.pdf john.doe
+
+# With custom output and KDF method
+python main.py encrypt-file secret.txt alice --output secret.txt.encrypted --kdf-method pbkdf2
+
+# Overwrite existing files
+python main.py encrypt-file data.json user123 --overwrite
+```
+
+#### File Decryption
+```bash
+# Decrypt a file
+python main.py decrypt-file document.pdf.faceauth john.doe
+
+# Verify file without decrypting
+python main.py decrypt-file secret.txt.encrypted alice --verify-only
+
+# With custom output path
+python main.py decrypt-file data.json.faceauth user123 --output restored_data.json
+```
+
+#### User Management
+```bash
+# List all enrolled users
+python main.py list-users
+
+# List with detailed metadata (verbose mode)
+python main.py list-users --verbose
+```
+
+### Configuration Management
+
+```bash
+# Show current configuration
+python main.py config-commands config-show
+
+# Set configuration values
+python main.py config-commands config-set authentication.timeout 15
+python main.py config-commands config-set encryption.kdf_method pbkdf2
+
+# Reset to defaults
+python main.py config-commands config-reset
+```
+
+### Shell Completion
+
+```bash
+# Install completion for your shell (auto-detected)
+python main.py completion-commands install-completion
+
+# Install for specific shell
+python main.py completion-commands install-completion --shell bash
+
+# Generate completion script
+python main.py completion-commands generate-completion --shell zsh
+```
+
+### System Utilities
+
+```bash
+# Check system requirements and camera
+python main.py system-check
+
+# Show version information
+python main.py version
+```
+
+## 🎛️ Global Options
+
+All commands support these global options:
+
+- `--verbose` / `-v`: Enable detailed output
+- `--debug`: Enable debug logging and error traces  
+- `--help`: Show command-specific help
+
+## ⚙️ Configuration
+
+FaceAuth uses a persistent configuration system located at:
+- **Windows**: `%USERPROFILE%\.faceauth\config.ini`
+- **Linux/macOS**: `~/.faceauth/config.ini`
+
+### Configuration Sections
+
+#### General Settings
+```ini
+[general]
+storage_dir = ~/.faceauth/data
+log_level = INFO
+quiet_mode = false
+auto_backup = true
+```
+
+#### Authentication Settings  
+```ini
+[authentication]
+timeout = 10
+max_attempts = 5
+similarity_threshold = 0.6
+device = auto
+```
+
+#### Encryption Settings
+```ini
+[encryption]
+kdf_method = argon2
+chunk_size = 1048576
+overwrite_existing = false
+```
+
+#### Enrollment Settings
+```ini
+[enrollment]
+timeout = 30
+quality_threshold = 0.7
+min_samples = 5
+```
 python demo.py
 ```
 
