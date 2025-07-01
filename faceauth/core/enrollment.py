@@ -17,6 +17,10 @@ import warnings
 
 from ..utils.security import SecurityManager
 from ..utils.storage import FaceDataStorage
+from ..security.secure_storage import SecureStorage
+from ..security.audit_logger import SecureAuditLogger
+from ..security.privacy_manager import PrivacyManager
+from ..security.memory_manager import SecureMemoryManager
 
 
 class FaceEnrollmentError(Exception):

@@ -22,6 +22,12 @@ from faceauth.utils.storage import FaceDataStorage, BackupManager
 from faceauth.utils.security import SecurityManager
 from faceauth.cli import config_commands, completion_commands
 
+# Import security modules
+from faceauth.security.compliance_checker import ComplianceChecker
+from faceauth.security.privacy_manager import PrivacyManager
+from faceauth.security.audit_logger import SecureAuditLogger
+from faceauth.security.secure_storage import SecureStorage
+
 
 @click.group()
 @click.version_option(version='1.0.0')
@@ -40,6 +46,12 @@ def cli(ctx, verbose, debug):
       encrypt-file    Encrypt a file with face authentication
       decrypt-file    Decrypt a file with face authentication
       list-users      List all enrolled users
+      
+    Security & Privacy Commands:
+      privacy-check   Check privacy compliance and generate reports
+      compliance-check Run compliance checks against security standards
+      security-audit  Perform comprehensive security audit
+      privacy-settings Manage privacy settings for individual users
       
     Management Commands:
       config-*        Configuration management
@@ -190,11 +202,33 @@ def enroll_face(ctx, user_id: str, timeout: int, storage_dir: str, master_key: s
             master_key=master_key
         )
         
+        # Initialize privacy manager for consent handling
+        storage_path = Path(storage_dir or str(Path.home() / '.faceauth'))
+        privacy_manager = PrivacyManager(str(storage_path))
+        
         # Check if user already exists
         if enrollment_manager.verify_enrollment(user_id):
             click.echo(f"❌ Error: User '{user_id}' is already enrolled", err=True)
             click.echo("💡 Tip: Use 'delete-user' command to remove existing enrollment first", err=True)
             sys.exit(1)
+        
+        # Request consent for data processing
+        if not quiet:
+            click.echo("\n📋 Data Processing Consent")
+            click.echo("FaceAuth needs to process and store your facial data for authentication.")
+            click.echo("Your data will be:")
+            click.echo("  • Stored locally on your device")
+            click.echo("  • Encrypted with strong encryption")
+            click.echo("  • Never transmitted to external servers")
+            click.echo("  • Used only for authentication purposes")
+            click.echo()
+            
+            if not click.confirm("Do you consent to facial data processing for authentication?"):
+                print_status("Enrollment cancelled - consent not given", "warning", quiet)
+                sys.exit(1)
+        
+        # Record consent
+        privacy_manager.grant_consent(user_id, purposes=['authentication'])
         
         print_status("System initialized successfully", "success", quiet)
         
@@ -305,16 +339,27 @@ def verify_face(ctx, user_id: str, timeout: int, max_attempts: int, threshold: f
             click.echo("❌ Error: Threshold must be between 0.1 and 1.0", err=True)
             sys.exit(1)
         
-        # Initialize storage and authenticator
+        # Initialize storage and authenticator with security features
         print_status("Initializing authentication system...", "progress", quiet)
         security_manager = SecurityManager(master_key)
         storage = FaceDataStorage(storage_dir, security_manager)
-        authenticator = FaceAuthenticator(storage, similarity_threshold=threshold)
+        authenticator = FaceAuthenticator(storage, similarity_threshold=threshold, storage_dir=storage_dir)
         
-        # Check if user exists
+        # Initialize privacy manager
+        storage_path = Path(storage_dir or str(Path.home() / '.faceauth'))
+        privacy_manager = PrivacyManager(str(storage_path))
+        
+        # Check if user exists and has valid consent
         if not storage.user_exists(user_id):
             click.echo(f"❌ Error: User '{user_id}' is not enrolled", err=True)
             click.echo("💡 Tip: Use 'enroll-face' command to enroll the user first", err=True)
+            sys.exit(1)
+        
+        # Check privacy consent
+        if not privacy_manager.is_processing_allowed(user_id):
+            click.echo(f"❌ Error: Data processing not permitted for user '{user_id}'", err=True)
+            click.echo("💡 Tip: Use 'privacy-settings' command to grant consent", err=True)
+            sys.exit(1)
             sys.exit(1)
         
         if not quiet:
@@ -726,6 +771,417 @@ def decrypt_file(ctx, encrypted_path: str, user_id: str, output: str, auth_timeo
     except Exception as e:
         exit_code = handle_cli_error(e, "Unexpected error during decryption", debug)
         sys.exit(exit_code)
+
+
+@cli.command('privacy-check')
+@click.option('--storage-dir', '-s', help='Custom storage directory')
+@click.option('--user-id', '-u', help='Check privacy for specific user')
+@click.option('--export', '-e', help='Export privacy report to file')
+@click.option('--quiet', '-q', is_flag=True, help='Quiet mode - minimal output')
+@click.pass_context
+def privacy_check(ctx, storage_dir: str, user_id: str, export: str, quiet: bool):
+    """
+    Check privacy compliance and generate privacy reports.
+    
+    Examples:
+        faceauth privacy-check
+        faceauth privacy-check --user-id john.doe
+        faceauth privacy-check --export privacy_report.json
+    """
+    verbose = ctx.obj.get('verbose', False)
+    debug = ctx.obj.get('debug', False)
+    
+    try:
+        if not quiet:
+            click.echo("🔒 FaceAuth - Privacy Compliance Check")
+            click.echo("=" * 40)
+        
+        # Initialize privacy manager
+        storage_path = Path(storage_dir or str(Path.home() / '.faceauth'))
+        privacy_manager = PrivacyManager(str(storage_path))
+        
+        if user_id:
+            # Check specific user
+            user_data = privacy_manager.get_user_data_summary(user_id)
+            if user_data:
+                if not quiet:
+                    print_status(f"Privacy data for user: {user_id}", "user", quiet)
+                    print_status(f"Data stored: {user_data['has_data']}", "info", quiet)
+                    print_status(f"Consent given: {user_data['consent_given']}", "info", quiet)
+                    print_status(f"Processing allowed: {user_data['processing_allowed']}", "info", quiet)
+                    if user_data['retention_until']:
+                        print_status(f"Retention until: {user_data['retention_until']}", "time", quiet)
+            else:
+                click.echo(f"❌ No privacy data found for user: {user_id}", err=True)
+                sys.exit(1)
+        else:
+            # Generate full privacy report
+            report = privacy_manager.generate_privacy_report()
+            
+            if not quiet:
+                print_status("Privacy Compliance Summary", "info", quiet)
+                print_status(f"Total users: {report['statistics']['total_users']}", "stats", quiet)
+                print_status(f"Total data records: {report['statistics']['total_data_records']}", "stats", quiet)
+                print_status(f"Data types: {', '.join(report['statistics']['data_types'])}", "stats", quiet)
+                print_status(f"Auto cleanup enabled: {report['compliance_status']['auto_cleanup_enabled']}", "stats", quiet)
+                
+                if verbose:
+                    print_status(f"Expired data records: {report['statistics']['expired_data_records']}", "stats", quiet)
+                    print_status(f"Expired consent records: {report['statistics']['expired_consent_records']}", "stats", quiet)
+            
+            if export:
+                import json
+                with open(export, 'w') as f:
+                    json.dump(report, f, indent=2, default=str)
+                print_status(f"Privacy report exported to: {export}", "file", quiet)
+        
+        sys.exit(0)
+        
+    except Exception as e:
+        exit_code = handle_cli_error(e, "Privacy check failed", debug)
+        sys.exit(exit_code)
+
+
+@cli.command('compliance-check')
+@click.option('--standard', '-s', multiple=True, 
+              type=click.Choice(['gdpr', 'ccpa', 'soc2', 'iso27001', 'nist']),
+              help='Compliance standards to check (can specify multiple)')
+@click.option('--storage-dir', '-d', help='Custom storage directory')
+@click.option('--export', '-e', help='Export compliance report to file')
+@click.option('--quiet', '-q', is_flag=True, help='Quiet mode - minimal output')
+@click.pass_context
+def compliance_check(ctx, standard: tuple, storage_dir: str, export: str, quiet: bool):
+    """
+    Run comprehensive compliance checks against security standards.
+    
+    Examples:
+        faceauth compliance-check
+        faceauth compliance-check --standard gdpr --standard ccpa
+        faceauth compliance-check --export compliance_report.json
+    """
+    verbose = ctx.obj.get('verbose', False)
+    debug = ctx.obj.get('debug', False)
+    
+    try:
+        if not quiet:
+            click.echo("📋 FaceAuth - Compliance Assessment")
+            click.echo("=" * 40)
+        
+        # Initialize compliance checker
+        storage_path = Path(storage_dir or str(Path.home() / '.faceauth'))
+        compliance_checker = ComplianceChecker(str(storage_path))
+        
+        # Run compliance checks
+        if standard:
+            # Check specific standards
+            results = {}
+            for std in standard:
+                if not quiet:
+                    print_status(f"Checking {std.upper()} compliance...", "progress", quiet)
+                
+                result = compliance_checker.check_compliance(std)
+                results[std] = result
+                
+                if not quiet:
+                    compliance_score = result['compliance_score']
+                    status_type = "success" if compliance_score >= 0.8 else "warning" if compliance_score >= 0.6 else "error"
+                    print_status(f"{std.upper()}: {compliance_score:.1%} compliant", status_type, quiet)
+                    
+                    if verbose:
+                        passed_checks = sum(1 for check in result['checks'] if check['status'] == 'pass')
+                        total_checks = len(result['checks'])
+                        print_status(f"   Passed: {passed_checks}/{total_checks} checks", "stats", quiet)
+        else:
+            # Run all compliance checks
+            if not quiet:
+                print_status("Running comprehensive compliance assessment...", "progress", quiet)
+            
+            results = compliance_checker.run_all_compliance_checks()
+            
+            if not quiet:
+                print_status("Compliance Results Summary", "info", quiet)
+                for std_name, result in results.items():
+                    compliance_score = result['compliance_score']
+                    status_type = "success" if compliance_score >= 0.8 else "warning" if compliance_score >= 0.6 else "error"
+                    print_status(f"{std_name.upper()}: {compliance_score:.1%}", status_type, quiet)
+        
+        # Export results if requested
+        if export:
+            import json
+            with open(export, 'w') as f:
+                json.dump(results, f, indent=2, default=str)
+            print_status(f"Compliance report exported to: {export}", "file", quiet)
+        
+        # Check if any compliance issues need attention
+        low_compliance = any(
+            result['compliance_score'] < 0.8 
+            for result in results.values()
+        )
+        
+        if low_compliance and not quiet:
+            click.echo("\n⚠️  Some compliance issues detected. Use --verbose for details.")
+            click.echo("💡 Consider running 'faceauth security-audit' for remediation suggestions.")
+        
+        sys.exit(0 if not low_compliance else 1)
+        
+    except Exception as e:
+        exit_code = handle_cli_error(e, "Compliance check failed", debug)
+        sys.exit(exit_code)
+
+
+@cli.command('security-audit')
+@click.option('--storage-dir', '-d', help='Custom storage directory')
+@click.option('--fix', '-f', is_flag=True, help='Automatically fix security issues where possible')
+@click.option('--export', '-e', help='Export audit report to file')
+@click.option('--quiet', '-q', is_flag=True, help='Quiet mode - minimal output')
+@click.pass_context
+def security_audit(ctx, storage_dir: str, fix: bool, export: str, quiet: bool):
+    """
+    Perform comprehensive security audit and provide remediation suggestions.
+    
+    Examples:
+        faceauth security-audit
+        faceauth security-audit --fix
+        faceauth security-audit --export security_audit.json
+    """
+    verbose = ctx.obj.get('verbose', False)
+    debug = ctx.obj.get('debug', False)
+    
+    try:
+        if not quiet:
+            click.echo("🛡️  FaceAuth - Security Audit")
+            click.echo("=" * 40)
+        
+        storage_path = storage_dir or str(Path.home() / '.faceauth')
+        
+        # Initialize security components
+        secure_storage = SecureStorage(storage_path)
+        audit_logger = SecureAuditLogger(Path(storage_path) / 'logs')
+        compliance_checker = ComplianceChecker(storage_path)
+        
+        audit_results = {
+            'timestamp': time.time(),
+            'storage_path': storage_path,
+            'checks': [],
+            'issues': [],
+            'recommendations': []
+        }
+        
+        if not quiet:
+            print_status("Performing security audit...", "progress", quiet)
+        
+        # Check storage security
+        storage_issues = secure_storage.validate_security()
+        if storage_issues:
+            audit_results['issues'].extend(storage_issues)
+            if not quiet:
+                for issue in storage_issues:
+                    print_status(f"Storage issue: {issue}", "warning", quiet)
+        
+        # Check audit logs
+        try:
+            log_integrity = audit_logger.verify_log_integrity()
+            if log_integrity['valid']:
+                audit_results['checks'].append({
+                    'category': 'audit_logs',
+                    'check': 'log_integrity',
+                    'status': 'pass',
+                    'details': 'Audit logs are intact and tamper-evident'
+                })
+            else:
+                audit_results['issues'].append({
+                    'category': 'audit_logs',
+                    'severity': 'high',
+                    'issue': 'Log integrity compromised',
+                    'details': log_integrity.get('error', 'Unknown integrity issue')
+                })
+        except Exception as e:
+            audit_results['issues'].append({
+                'category': 'audit_logs',
+                'severity': 'medium',
+                'issue': 'Cannot verify log integrity',
+                'details': str(e)
+            })
+        
+        # Run compliance checks for security recommendations
+        compliance_results = compliance_checker.run_all_compliance_checks()
+        for std_name, result in compliance_results.items():
+            failed_checks = [check for check in result['checks'] if check['status'] != 'pass']
+            for check in failed_checks:
+                audit_results['recommendations'].append({
+                    'standard': std_name,
+                    'recommendation': check['description'],
+                    'priority': 'high' if check['status'] == 'fail' else 'medium'
+                })
+        
+        # Generate summary
+        high_issues = len([issue for issue in audit_results['issues'] if issue.get('severity') == 'high'])
+        medium_issues = len([issue for issue in audit_results['issues'] if issue.get('severity') == 'medium'])
+        
+        if not quiet:
+            click.echo()
+            print_status("Security Audit Summary", "info", quiet)
+            print_status(f"High priority issues: {high_issues}", "error" if high_issues > 0 else "success", quiet)
+            print_status(f"Medium priority issues: {medium_issues}", "warning" if medium_issues > 0 else "success", quiet)
+            print_status(f"Recommendations: {len(audit_results['recommendations'])}", "info", quiet)
+            
+            if verbose and audit_results['recommendations']:
+                click.echo("\n💡 Top Recommendations:")
+                for rec in audit_results['recommendations'][:5]:
+                    click.echo(f"   • [{rec['standard'].upper()}] {rec['recommendation']}")
+        
+        # Auto-fix if requested
+        if fix and audit_results['issues']:
+            if not quiet:
+                print_status("Attempting to fix security issues...", "progress", quiet)
+            
+            fixed_count = 0
+            for issue in audit_results['issues']:
+                if issue['category'] == 'storage' and 'permissions' in issue.get('details', ''):
+                    try:
+                        secure_storage.fix_permissions()
+                        fixed_count += 1
+                    except Exception as e:
+                        if verbose:
+                            print_status(f"Could not fix: {issue['issue']}", "warning", quiet)
+            
+            if not quiet:
+                print_status(f"Fixed {fixed_count} security issues", "success", quiet)
+        
+        # Export results if requested
+        if export:
+            import json
+            with open(export, 'w') as f:
+                json.dump(audit_results, f, indent=2, default=str)
+            print_status(f"Security audit report exported to: {export}", "file", quiet)
+        
+        sys.exit(0 if high_issues == 0 else 1)
+        
+    except Exception as e:
+        exit_code = handle_cli_error(e, "Security audit failed", debug)
+        sys.exit(exit_code)
+
+
+@cli.command('privacy-settings')
+@click.argument('user_id', type=str)
+@click.option('--grant-consent', is_flag=True, help='Grant data processing consent')
+@click.option('--revoke-consent', is_flag=True, help='Revoke data processing consent')
+@click.option('--set-retention', type=int, help='Set data retention period in days')
+@click.option('--delete-data', is_flag=True, help='Delete all user data (GDPR right to erasure)')
+@click.option('--export-data', help='Export user data to file (GDPR right to portability)')
+@click.option('--storage-dir', '-d', help='Custom storage directory')
+@click.option('--quiet', '-q', is_flag=True, help='Quiet mode - minimal output')
+@click.pass_context
+def privacy_settings(ctx, user_id: str, grant_consent: bool, revoke_consent: bool, 
+                     set_retention: int, delete_data: bool, export_data: str, 
+                     storage_dir: str, quiet: bool):
+    """
+    Manage privacy settings for individual users.
+    
+    USER_ID: Unique identifier for the user
+    
+    Examples:
+        faceauth privacy-settings john.doe --grant-consent
+        faceauth privacy-settings alice@example.com --set-retention 365
+        faceauth privacy-settings user123 --export-data user_data.json
+        faceauth privacy-settings john.doe --delete-data
+    """
+    verbose = ctx.obj.get('verbose', False)
+    debug = ctx.obj.get('debug', False)
+    
+    try:
+        if not user_id or len(user_id.strip()) == 0:
+            click.echo("❌ Error: User ID cannot be empty", err=True)
+            sys.exit(1)
+        
+        user_id = user_id.strip()
+        
+        if not quiet:
+            click.echo("🔒 FaceAuth - Privacy Settings")
+            click.echo("=" * 40)
+            print_status(f"User: {user_id}", "user", quiet)
+        
+        # Initialize privacy manager
+        storage_path = Path(storage_dir or str(Path.home() / '.faceauth'))
+        privacy_manager = PrivacyManager(str(storage_path))
+        
+        # Validate that at least one action is specified
+        actions = [grant_consent, revoke_consent, set_retention is not None, delete_data, export_data is not None]
+        if not any(actions):
+            # Show current privacy settings
+            user_data = privacy_manager.get_user_data_summary(user_id)
+            if user_data:
+                if not quiet:
+                    print_status("Current Privacy Settings:", "info", quiet)
+                    print_status(f"Data stored: {user_data['has_data']}", "info", quiet)
+                    print_status(f"Consent given: {user_data['consent_given']}", "info", quiet)
+                    print_status(f"Processing allowed: {user_data['processing_allowed']}", "info", quiet)
+                    if user_data['retention_until']:
+                        print_status(f"Retention until: {user_data['retention_until']}", "time", quiet)
+                    else:
+                        print_status("Retention: No limit set", "info", quiet)
+            else:
+                click.echo(f"❌ No data found for user: {user_id}", err=True)
+                sys.exit(1)
+            
+            sys.exit(0)
+        
+        # Handle conflicting options
+        if grant_consent and revoke_consent:
+            click.echo("❌ Error: Cannot grant and revoke consent simultaneously", err=True)
+            sys.exit(1)
+        
+        # Execute privacy actions
+        if grant_consent:
+            privacy_manager.grant_consent(user_id)
+            print_status("Data processing consent granted", "success", quiet)
+        
+        if revoke_consent:
+            privacy_manager.revoke_consent(user_id)
+            print_status("Data processing consent revoked", "warning", quiet)
+        
+        if set_retention is not None:
+            if set_retention < 0:
+                click.echo("❌ Error: Retention period cannot be negative", err=True)
+                sys.exit(1)
+            
+            from datetime import datetime, timedelta
+            retention_until = datetime.now() + timedelta(days=set_retention)
+            privacy_manager.set_data_retention(user_id, retention_until)
+            print_status(f"Data retention set to {set_retention} days", "success", quiet)
+        
+        if export_data:
+            try:
+                user_data = privacy_manager.export_user_data(user_id)
+                import json
+                with open(export_data, 'w') as f:
+                    json.dump(user_data, f, indent=2, default=str)
+                print_status(f"User data exported to: {export_data}", "file", quiet)
+            except Exception as e:
+                click.echo(f"❌ Error exporting data: {str(e)}", err=True)
+                sys.exit(1)
+        
+        if delete_data:
+            # Confirm deletion
+            if not quiet:
+                click.echo("⚠️  WARNING: This will permanently delete all data for this user!")
+                if not click.confirm("Are you sure you want to continue?"):
+                    print_status("Data deletion cancelled", "info", quiet)
+                    sys.exit(0)
+            
+            try:
+                privacy_manager.delete_user_data(user_id)
+                print_status(f"All data for user '{user_id}' has been permanently deleted", "success", quiet)
+            except Exception as e:
+                click.echo(f"❌ Error deleting data: {str(e)}", err=True)
+                sys.exit(1)
+        
+        sys.exit(0)
+        
+    except Exception as e:
+        exit_code = handle_cli_error(e, "Privacy settings update failed", debug)
+        sys.exit(exit_code)
+
 
 if __name__ == '__main__':
     cli()

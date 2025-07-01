@@ -17,6 +17,10 @@ import warnings
 
 from ..utils.storage import FaceDataStorage
 from ..utils.security import SecurityManager
+from ..security.secure_storage import SecureStorage
+from ..security.audit_logger import SecureAuditLogger
+from ..security.privacy_manager import PrivacyManager
+from ..security.memory_manager import SecureMemoryManager
 
 
 class AuthenticationError(Exception):
@@ -25,10 +29,10 @@ class AuthenticationError(Exception):
 
 
 class FaceAuthenticator:
-    """Real-time face authentication using webcam."""
+    """Real-time face authentication using webcam with enhanced security."""
     
     def __init__(self, storage: FaceDataStorage = None, device: str = None, 
-                 similarity_threshold: float = 0.6):
+                 similarity_threshold: float = 0.6, storage_dir: str = None):
         """
         Initialize the authenticator.
         
@@ -36,6 +40,7 @@ class FaceAuthenticator:
             storage: Face data storage instance
             device: Device to run on ('cpu' or 'cuda')
             similarity_threshold: Minimum cosine similarity for authentication
+            storage_dir: Directory for secure storage
         """
         if device is None:
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -43,6 +48,12 @@ class FaceAuthenticator:
         self.device = device
         self.similarity_threshold = similarity_threshold
         self.storage = storage or FaceDataStorage()
+        
+        # Initialize security components
+        self.secure_storage = SecureStorage(storage_dir or str(Path.home() / '.faceauth'))
+        self.audit_logger = SecureAuditLogger(self.secure_storage.storage_dir / 'logs')
+        self.privacy_manager = PrivacyManager(self.secure_storage.storage_dir)
+        self.memory_manager = SecureMemoryManager()
         
         # Initialize face detection and embedding models
         self._init_models()
@@ -169,7 +180,7 @@ class FaceAuthenticator:
     def authenticate_realtime(self, user_id: str, timeout: int = 10, 
                             max_attempts: int = 5) -> Dict[str, Any]:
         """
-        Perform real-time face authentication via webcam.
+        Perform real-time face authentication via webcam with enhanced security.
         
         Args:
             user_id: User ID to authenticate
@@ -182,17 +193,54 @@ class FaceAuthenticator:
         start_time = time.time()
         self.total_attempts += 1
         
-        # Load enrolled embedding
+        # Log authentication attempt
+        self.audit_logger.log_event(
+            event_type='authentication_started',
+            user_id=user_id,
+            details={'timeout': timeout, 'max_attempts': max_attempts}
+        )
+        
+        # Check if authentication is allowed for this user
+        if not self.privacy_manager.is_processing_allowed(user_id):
+            self.audit_logger.log_event(
+                event_type='authentication_denied',
+                user_id=user_id,
+                details={'reason': 'processing_not_allowed'}
+            )
+            return {
+                'success': False,
+                'error': 'Authentication not permitted for this user',
+                'error_type': 'privacy_denied',
+                'duration': time.time() - start_time
+            }
+        
+        # Load enrolled embedding with secure storage
         try:
-            enrolled_embedding = self.storage.load_user_embedding(user_id)
-            if enrolled_embedding is None:
+            # Check if user exists in secure storage
+            user_data_path = self.secure_storage.get_user_file_path(user_id, 'embedding.enc')
+            if not user_data_path.exists():
+                self.audit_logger.log_event(
+                    event_type='authentication_failed',
+                    user_id=user_id,
+                    details={'reason': 'user_not_found'}
+                )
                 return {
                     'success': False,
                     'error': f'User {user_id} not enrolled',
                     'error_type': 'user_not_found',
                     'duration': time.time() - start_time
                 }
+            
+            # Load and decrypt user embedding
+            embedding_data = self.secure_storage.load_encrypted_file(str(user_data_path))
+            enrolled_embedding = np.frombuffer(embedding_data, dtype=np.float32)
+            
         except Exception as e:
+            self.audit_logger.log_event(
+                event_type='authentication_failed',
+                user_id=user_id,
+                details={'reason': 'storage_error', 'error': str(e)}
+            )
             return {
                 'success': False,
                 'error': f'Error loading user data: {str(e)}',
@@ -275,9 +323,13 @@ class FaceAuthenticator:
                         attempt += 1
                         continue
                 
-                # Calculate similarity
-                similarity = self._calculate_similarity(current_embedding, enrolled_embedding)
-                best_similarity = max(best_similarity, similarity)
+                # Secure current embedding in protected memory
+                with self.memory_manager.allocate_secure_buffer(current_embedding.nbytes) as secure_buffer:
+                    secure_buffer[:] = current_embedding.tobytes()
+                    
+                    # Calculate similarity
+                    similarity = self._calculate_similarity(current_embedding, enrolled_embedding)
+                    best_similarity = max(best_similarity, similarity)
                 
                 authentication_attempts.append({
                     'attempt': attempt + 1,
@@ -296,6 +348,25 @@ class FaceAuthenticator:
                     duration = time.time() - start_time
                     self.authentication_times.append(duration)
                     
+                    # Log successful authentication
+                    self.audit_logger.log_event(
+                        event_type='authentication_success',
+                        user_id=user_id,
+                        details={
+                            'similarity': similarity,
+                            'threshold': self.similarity_threshold,
+                            'duration': duration,
+                            'attempts': attempt + 1
+                        }
+                    )
+                    
+                    # Update privacy manager
+                    self.privacy_manager.record_processing_activity(
+                        user_id=user_id,
+                        activity_type='authentication',
+                        purpose='identity_verification'
+                    )
+                    
                     result = {
                         'success': True,
                         'user_id': user_id,
@@ -312,6 +383,10 @@ class FaceAuthenticator:
                     print(f"   Similarity: {similarity:.3f} (threshold: {self.similarity_threshold})")
                     print(f"   Duration: {duration:.2f}s")
                     
+                    # Clear sensitive data from memory
+                    self.memory_manager.secure_zero(enrolled_embedding)
+                    self.memory_manager.secure_zero(current_embedding)
+                    
                     return result
                 
                 attempt += 1
@@ -327,6 +402,22 @@ class FaceAuthenticator:
             else:
                 error_msg = f"Authentication timeout after {timeout}s"
                 error_type = "timeout"
+            
+            # Log failed authentication
+            self.audit_logger.log_event(
+                event_type='authentication_failed',
+                user_id=user_id,
+                details={
+                    'reason': error_type,
+                    'best_similarity': best_similarity,
+                    'threshold': self.similarity_threshold,
+                    'duration': duration,
+                    'attempts': attempt
+                }
+            )
+            
+            # Clear sensitive data from memory
+            self.memory_manager.secure_zero(enrolled_embedding)
             
             return {
                 'success': False,

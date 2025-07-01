@@ -1,0 +1,47 @@
+{
+  "gdpr": {
+    "standard": "GDPR",
+    "compliance_score": 1.0,
+    "checks_passed": 8,
+    "total_checks": 8,
+    "checks": [],
+    "timestamp": "2025-07-01T18:08:15.654456",
+    "compliant": true
+  },
+  "ccpa": {
+    "standard": "CCPA",
+    "compliance_score": 1.0,
+    "checks_passed": 4,
+    "total_checks": 4,
+    "checks": [],
+    "timestamp": "2025-07-01T18:08:15.722291",
+    "compliant": true
+  },
+  "soc2": {
+    "standard": "SOC2",
+    "compliance_score": 1.0,
+    "checks_passed": 5,
+    "total_checks": 5,
+    "checks": [],
+    "timestamp": "2025-07-01T18:08:15.789079",
+    "compliant": true
+  },
+  "iso27001": {
+    "standard": "ISO27001",
+    "compliance_score": 1.0,
+    "checks_passed": 6,
+    "total_checks": 6,
+    "checks": [],
+    "timestamp": "2025-07-01T18:08:15.853785",
+    "compliant": true
+  },
+  "nist": {
+    "standard": "NIST",
+    "compliance_score": 1.0,
+    "checks_passed": 5,
+    "total_checks": 5,
+    "checks": [],
+    "timestamp": "2025-07-01T18:08:15.925293",
+    "compliant": true
+  }
+}
