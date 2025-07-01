@@ -546,11 +546,11 @@ def decrypt_file(filename, output, user_id, model, data_dir):
         sys.exit(1)
     except FileEncryptionError as e:
         click.echo(f"\n❌ Decryption Error: {e}")
-        click.echo("\n💡 Possible causes:")
-        click.echo("• Wrong password")
-        click.echo("• Corrupted encrypted file")
-        click.echo("• Invalid .faceauth file format")
-        click.echo("• Insufficient disk space")
+        click.echo("\n💡 Common causes and solutions:")
+        click.echo("• Wrong password - try again with correct password")
+        click.echo("• Corrupted file - restore from backup if available")
+        click.echo("• Invalid file format - ensure file was encrypted with FaceAuth")
+        click.echo("• File tampering - check file integrity")
         sys.exit(1)
     except ImportError as e:
         click.echo(f"\n❌ Missing dependencies: {e}")

@@ -119,6 +119,9 @@ def decrypt_file_key(encrypted_file_key_data: bytes, password_key: bytes) -> byt
         
     Returns:
         Decrypted file key
+        
+    Raises:
+        FileEncryptionError: If decryption fails (wrong password or corrupted data)
     """
     try:
         # Extract components
@@ -140,7 +143,15 @@ def decrypt_file_key(encrypted_file_key_data: bytes, password_key: bytes) -> byt
         return file_key
         
     except Exception as e:
-        raise FileEncryptionError(f"File key decryption failed: {str(e)}")
+        # Check if it's an authentication failure (wrong password or corrupted file)
+        if "authentication" in str(e).lower() or "tag" in str(e).lower():
+            raise FileEncryptionError(
+                "Authentication failed. This usually means either:\n"
+                "• Incorrect password was provided\n"
+                "• The encrypted file has been corrupted or tampered with"
+            )
+        else:
+            raise FileEncryptionError(f"File key decryption failed: {str(e)}")
 
 
 def encrypt_file_content(file_data: bytes, file_key: bytes) -> bytes:
@@ -186,6 +197,9 @@ def decrypt_file_content(encrypted_content_data: bytes, file_key: bytes) -> byte
         
     Returns:
         Decrypted file content
+        
+    Raises:
+        FileEncryptionError: If decryption fails
     """
     try:
         # Extract components
@@ -207,7 +221,13 @@ def decrypt_file_content(encrypted_content_data: bytes, file_key: bytes) -> byte
         return file_data
         
     except Exception as e:
-        raise FileEncryptionError(f"File content decryption failed: {str(e)}")
+        # Check if it's an authentication failure
+        if "authentication" in str(e).lower() or "tag" in str(e).lower():
+            raise FileEncryptionError(
+                "File content authentication failed. The encrypted file may be corrupted."
+            )
+        else:
+            raise FileEncryptionError(f"File content decryption failed: {str(e)}")
 
 
 def encrypt_file(file_path: str, password: str) -> str:
@@ -290,6 +310,13 @@ def decrypt_file(encrypted_file_path: str, password: str, output_path: str = Non
     """
     Decrypt a file encrypted with encrypt_file().
     
+    This function reverses the key wrapping process:
+    1. Parse the .faceauth file structure
+    2. Derive password key from password + salt
+    3. Decrypt the file key using password key
+    4. Decrypt file content using file key
+    5. Write decrypted content to output file
+    
     Args:
         encrypted_file_path: Path to the .faceauth encrypted file
         password: User password for key derivation
@@ -299,7 +326,7 @@ def decrypt_file(encrypted_file_path: str, password: str, output_path: str = Non
         Path to the decrypted file
         
     Raises:
-        FileEncryptionError: If decryption fails
+        FileEncryptionError: If decryption fails for any reason
     """
     try:
         # Validate input file
@@ -317,40 +344,78 @@ def decrypt_file(encrypted_file_path: str, password: str, output_path: str = Non
         except Exception as e:
             raise FileEncryptionError(f"Cannot read encrypted file: {str(e)}")
         
-        # Validate minimum file size
+        # Validate minimum file size for .faceauth format
         min_size = 16 + 28 + 12 + 16  # salt + encrypted_file_key + content_nonce + content_tag
         if len(encrypted_data) < min_size:
-            raise FileEncryptionError("Invalid encrypted file format (too small)")
+            raise FileEncryptionError(
+                "Invalid encrypted file format. This doesn't appear to be a valid .faceauth file.\n"
+                "• File may be corrupted\n"
+                "• File may not be encrypted with FaceAuth\n"
+                "• File may be incomplete"
+            )
         
-        # Extract components
+        # Extract components from .faceauth file structure
+        # Format: salt (16) + encrypted_file_key (28) + encrypted_content (variable)
         salt = encrypted_data[:16]
-        encrypted_file_key = encrypted_data[16:44]  # 12 + 16 + 16 = 44
+        encrypted_file_key = encrypted_data[16:44]  # 12 + 16 + 16 = 44 bytes
         encrypted_content = encrypted_data[44:]
         
-        # Derive password key using stored salt
+        # Validate extracted components
+        if len(encrypted_file_key) != 28:  # 12 nonce + 16 key + 16 tag
+            raise FileEncryptionError("Invalid file format: corrupted file key section")
+        
+        if len(encrypted_content) < 28:  # Minimum: 12 nonce + 16 tag + some content
+            raise FileEncryptionError("Invalid file format: corrupted content section")
+        
+        # Step 1: Derive password key using stored salt
         password_key, _ = derive_key_from_password(password, salt)
         
-        # Decrypt File Key
-        file_key = decrypt_file_key(encrypted_file_key, password_key)
+        # Step 2: Decrypt File Key (this is where wrong password is usually detected)
+        try:
+            file_key = decrypt_file_key(encrypted_file_key, password_key)
+        except FileEncryptionError as e:
+            # Re-raise with more context about where the failure occurred
+            raise FileEncryptionError(
+                f"Failed to decrypt file key: {str(e)}\n\n"
+                "This is usually caused by:\n"
+                "• Incorrect password\n"
+                "• Corrupted .faceauth file\n"
+                "• File tampering"
+            )
         
-        # Decrypt file content
-        file_data = decrypt_file_content(encrypted_content, file_key)
+        # Step 3: Decrypt file content using the unwrapped file key
+        try:
+            file_data = decrypt_file_content(encrypted_content, file_key)
+        except FileEncryptionError as e:
+            raise FileEncryptionError(
+                f"Failed to decrypt file content: {str(e)}\n\n"
+                "The file key was decrypted successfully, but the file content is corrupted."
+            )
         
-        # Determine output path
+        # Step 4: Determine output path
         if output_path is None:
             if input_path.suffix == '.faceauth':
+                # Remove .faceauth extension to restore original name
                 output_path = input_path.with_suffix('')
             else:
+                # Add .decrypted suffix if not standard .faceauth file
                 output_path = input_path.with_suffix('.decrypted')
         
         output_path = Path(output_path)
         
-        # Write decrypted content
+        # Ensure output directory exists
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Step 5: Write decrypted content
         try:
             with open(output_path, 'wb') as f:
                 f.write(file_data)
         except Exception as e:
             raise FileEncryptionError(f"Cannot write decrypted file: {str(e)}")
+        
+        # Verify file was written correctly
+        if not output_path.exists() or output_path.stat().st_size != len(file_data):
+            raise FileEncryptionError("Failed to write decrypted file completely")
         
         # Securely clear sensitive data from memory (best effort)
         file_key = os.urandom(32)  # Overwrite with random data
@@ -359,8 +424,10 @@ def decrypt_file(encrypted_file_path: str, password: str, output_path: str = Non
         return str(output_path)
         
     except FileEncryptionError:
+        # Re-raise FileEncryptionError as-is
         raise
     except Exception as e:
+        # Wrap unexpected errors
         raise FileEncryptionError(f"Unexpected decryption error: {str(e)}")
 
 
