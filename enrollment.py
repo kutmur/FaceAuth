@@ -290,6 +290,30 @@ class FaceEnroller:
         except Exception as e:
             raise FaceEnrollmentError(f"Failed to save encrypted embedding: {str(e)}")
     
+    def _save_reference_image(self, face_image: np.ndarray, user_id: str) -> str:
+        """
+        Save a reference image for authentication purposes.
+        
+        Args:
+            face_image: Captured face image
+            user_id: User identifier
+            
+        Returns:
+            Path to saved reference image
+        """
+        try:
+            print("📸 Saving reference image for authentication...")
+            
+            # Save reference image
+            reference_path = self.data_dir / f"{user_id}_reference.jpg"
+            cv2.imwrite(str(reference_path), face_image)
+            
+            print(f"✅ Reference image saved to: {reference_path}")
+            return str(reference_path)
+            
+        except Exception as e:
+            raise FaceEnrollmentError(f"Failed to save reference image: {str(e)}")
+    
     def enroll_new_user(self, user_id: str = None) -> Dict[str, Any]:
         """
         Complete face enrollment process for a new user.
@@ -335,11 +359,15 @@ class FaceEnroller:
             # Step 3: Save encrypted embedding
             file_path = self._save_encrypted_embedding(embedding, user_id, password)
             
+            # Step 4: Save reference image for authentication
+            reference_path = self._save_reference_image(face_image, user_id)
+            
             # Success
             result = {
                 'success': True,
                 'user_id': user_id,
                 'file_path': file_path,
+                'reference_path': reference_path,
                 'embedding_size': len(embedding),
                 'model_used': self.model_name,
                 'message': f'✅ Face enrollment completed successfully for user: {user_id}'

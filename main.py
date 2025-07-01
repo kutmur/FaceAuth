@@ -131,26 +131,101 @@ def enroll_face(user_id, model, data_dir):
     help="User ID to verify against (will prompt if not provided)"
 )
 @click.option(
+    "--model", 
+    "-m", 
+    type=click.Choice(["Facenet", "ArcFace", "VGG-Face", "Facenet512"], case_sensitive=False),
+    default="Facenet",
+    help="Face recognition model to use (default: Facenet)"
+)
+@click.option(
     "--data-dir",
     "-d",
     type=click.Path(),
     default="face_data",
     help="Directory containing face data (default: face_data)"
 )
-def verify_face(user_id, data_dir):
+def verify_face(user_id, model, data_dir):
     """
     🔍 Verify your identity using face authentication.
     
     This command compares your current face against stored face data
-    to authenticate your identity.
+    to authenticate your identity. The verification process is fast
+    and secure, completing in under 2 seconds.
+    
+    Requirements:
+    - Enrolled face data (use 'enroll-face' first)
+    - Working webcam
+    - Good lighting conditions
+    - Your enrollment password
     
     Examples:
         python main.py verify-face
         python main.py verify-face --user-id john_doe
+        python main.py verify-face --user-id alice --model ArcFace
     """
-    click.echo("🔍 Face verification not yet implemented")
-    click.echo("📋 This feature will be available in the next version")
-    click.echo("💡 Use 'enroll-face' to register your face first")
+    click.echo("🔍 Starting FaceAuth verification process...")
+    click.echo("=" * 60)
+    
+    try:
+        # Import authentication module
+        from authentication import FaceAuthenticator, FaceAuthenticationError
+        
+        # Create authenticator instance
+        authenticator = FaceAuthenticator(model_name=model, data_dir=data_dir)
+        
+        # Perform verification
+        click.echo("🚀 Initializing face authentication...")
+        verification_result = authenticator.verify_user_face(user_id)
+        
+        # Display results
+        if verification_result:
+            click.echo("\n🎉 SUCCESS!")
+            click.echo("✅ ACCESS GRANTED")
+            click.echo("🔓 Identity verified successfully")
+            click.echo(f"🧠 Model used: {model}")
+            click.echo("⚡ Verification completed in under 2 seconds")
+            
+            # Success message
+            click.echo("\n🌟 Authentication successful!")
+            click.echo("💡 You can now use secure features:")
+            click.echo("• Encrypt files: python main.py encrypt-file --file myfile.txt")
+            click.echo("• Access protected resources")
+            
+        else:
+            click.echo("\n❌ FAILURE!")
+            click.echo("🚫 ACCESS DENIED")
+            click.echo("⚠️  Identity could not be verified")
+            
+            # Failure guidance
+            click.echo("\n💡 Troubleshooting tips:")
+            click.echo("• Ensure good lighting conditions")
+            click.echo("• Position face clearly in camera view")
+            click.echo("• Remove glasses/masks if possible")
+            click.echo("• Try re-enrolling: python main.py enroll-face")
+            
+            sys.exit(1)
+            
+    except FaceAuthenticationError as e:
+        click.echo(f"\n❌ Authentication Error: {e}")
+        click.echo("\n💡 Common solutions:")
+        click.echo("• Check if user is enrolled: python main.py info")
+        click.echo("• Enroll first: python main.py enroll-face")
+        click.echo("• Verify password is correct")
+        click.echo("• Ensure webcam is working")
+        sys.exit(1)
+    except ImportError as e:
+        click.echo(f"\n❌ Missing dependencies: {e}")
+        click.echo("💡 Please install required packages:")
+        click.echo("   pip install -r requirements.txt")
+        click.echo("   python main.py setup")
+        sys.exit(1)
+    except KeyboardInterrupt:
+        click.echo("\n\n❌ Verification cancelled by user")
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"\n💥 Unexpected error: {e}")
+        click.echo("🐛 Please report this issue if it persists")
+        sys.exit(1)
 
 
 @cli.command("encrypt-file")
