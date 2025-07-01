@@ -9,8 +9,8 @@ Provides commands for face enrollment, authentication, and file encryption.
 Usage:
     python main.py enroll-face [--user-id USER] [--model MODEL]
     python main.py verify-face [--user-id USER]
-    python main.py encrypt-file [--file PATH] [--user-id USER]
-    python main.py decrypt-file [--file PATH] [--user-id USER]
+    python main.py encrypt-file <filename> [--user-id USER]
+    python main.py decrypt-file <filename> [--output PATH] [--user-id USER]
 """
 
 import click
@@ -99,7 +99,7 @@ def enroll_face(user_id, model, data_dir):
             # Next steps
             click.echo("\n📋 Next steps:")
             click.echo("• Test authentication: python main.py verify-face")
-            click.echo("• Encrypt files: python main.py encrypt-file --file myfile.txt")
+            click.echo("• Encrypt files: python main.py encrypt-file myfile.txt")
             click.echo("• View help: python main.py --help")
             
         else:
@@ -188,7 +188,7 @@ def verify_face(user_id, model, data_dir):
             # Success message
             click.echo("\n🌟 Authentication successful!")
             click.echo("💡 You can now use secure features:")
-            click.echo("• Encrypt files: python main.py encrypt-file --file myfile.txt")
+            click.echo("• Encrypt files: python main.py encrypt-file myfile.txt")
             click.echo("• Access protected resources")
             
         else:
@@ -229,40 +229,179 @@ def verify_face(user_id, model, data_dir):
 
 
 @cli.command("encrypt-file")
-@click.option(
-    "--file", 
-    "-f", 
-    type=click.Path(exists=True),
-    help="File to encrypt (will prompt if not provided)"
-)
+@click.argument("filename", type=click.Path(exists=True))
 @click.option(
     "--user-id", 
     "-u", 
     type=str, 
     help="User ID for face authentication (will prompt if not provided)"
 )
-def encrypt_file(file, user_id):
+@click.option(
+    "--model", 
+    "-m", 
+    type=click.Choice(["Facenet", "ArcFace", "VGG-Face", "Facenet512"], case_sensitive=False),
+    default="Facenet",
+    help="Face recognition model to use (default: Facenet)"
+)
+@click.option(
+    "--data-dir",
+    "-d",
+    type=click.Path(),
+    default="face_data",
+    help="Directory containing face data (default: face_data)"
+)
+def encrypt_file(filename, user_id, model, data_dir):
     """
     🔒 Encrypt a file using face authentication.
     
-    This command encrypts a file and requires face authentication
-    to decrypt it later.
+    This command first authenticates your identity using face verification,
+    then encrypts the specified file with a secure key wrapping approach.
+    The encrypted file will have a .faceauth extension.
+    
+    Security Process:
+    1. Face authentication to verify your identity
+    2. Password prompt for key derivation
+    3. File encryption with AES-256-GCM
+    4. Secure key wrapping to protect encryption keys
     
     Examples:
-        python main.py encrypt-file --file secret.txt
-        python main.py encrypt-file --file document.pdf --user-id alice
+        python main.py encrypt-file secret.txt
+        python main.py encrypt-file document.pdf --user-id alice
+        python main.py encrypt-file data.csv --user-id bob --model ArcFace
     """
-    click.echo("🔒 File encryption not yet implemented")
-    click.echo("📋 This feature will be available in the next version")
-    click.echo("💡 Use 'enroll-face' to register your face first")
+    click.echo("🔒 Starting FaceAuth file encryption process...")
+    click.echo("=" * 60)
+    
+    try:
+        # Import required modules
+        from authentication import FaceAuthenticator, FaceAuthenticationError
+        from file_handler import encrypt_file as encrypt_file_func, FileEncryptionError
+        import getpass
+        from pathlib import Path
+        
+        # Step 1: Face Authentication Gate
+        click.echo("🔍 Step 1: Face Authentication Required")
+        click.echo("⚠️  You must verify your identity before encrypting files")
+        click.echo()
+        
+        # Create authenticator instance
+        authenticator = FaceAuthenticator(model_name=model, data_dir=data_dir)
+        
+        # Perform face verification
+        click.echo("🚀 Starting face verification...")
+        verification_success = authenticator.verify_user_face(user_id)
+        
+        if not verification_success:
+            click.echo("\n❌ AUTHENTICATION FAILED")
+            click.echo("🚫 File encryption requires successful face verification")
+            click.echo("\n💡 Troubleshooting:")
+            click.echo("• Ensure you are enrolled: python main.py enroll-face")
+            click.echo("• Check lighting and camera positioning")
+            click.echo("• Verify your password is correct")
+            sys.exit(1)
+        
+        click.echo("\n✅ AUTHENTICATION SUCCESSFUL")
+        click.echo("🔓 Access granted for file encryption")
+        
+        # Step 2: Get encryption password
+        click.echo("\n🔐 Step 2: Password for File Encryption")
+        click.echo("Enter the password to protect your encrypted file:")
+        click.echo("(This can be the same as your enrollment password or different)")
+        
+        encryption_password = getpass.getpass("Encryption password: ")
+        if not encryption_password:
+            click.echo("❌ Password is required for file encryption")
+            sys.exit(1)
+        
+        # Confirm password
+        password_confirm = getpass.getpass("Confirm password: ")
+        if encryption_password != password_confirm:
+            click.echo("❌ Passwords do not match")
+            sys.exit(1)
+        
+        # Step 3: Encrypt the file
+        click.echo("\n🔒 Step 3: Encrypting File")
+        click.echo(f"📁 Input file: {filename}")
+        
+        # Get file info
+        input_path = Path(filename)
+        file_size = input_path.stat().st_size
+        click.echo(f"📊 File size: {file_size:,} bytes")
+        
+        # Perform encryption
+        click.echo("⚡ Encrypting with AES-256-GCM...")
+        encrypted_file_path = encrypt_file_func(filename, encryption_password)
+        
+        # Success report
+        encrypted_path = Path(encrypted_file_path)
+        encrypted_size = encrypted_path.stat().st_size
+        
+        click.echo("\n🎉 ENCRYPTION SUCCESSFUL!")
+        click.echo("✅ File encrypted and secured")
+        click.echo(f"📁 Original file: {filename}")
+        click.echo(f"🔒 Encrypted file: {encrypted_file_path}")
+        click.echo(f"📊 Original size: {file_size:,} bytes")
+        click.echo(f"📊 Encrypted size: {encrypted_size:,} bytes")
+        click.echo(f"🔐 Encryption overhead: {encrypted_size - file_size} bytes")
+        
+        # Security information
+        click.echo("\n🛡️  Security Information:")
+        click.echo("• File encrypted with AES-256-GCM")
+        click.echo("• Unique encryption key generated per file")
+        click.echo("• Key protected with PBKDF2 (100,000 iterations)")
+        click.echo("• Original file remains unchanged")
+        
+        # Next steps
+        click.echo("\n📋 Next Steps:")
+        click.echo(f"• Decrypt: python main.py decrypt-file {encrypted_file_path}")
+        click.echo("• Store your password securely - it cannot be recovered")
+        click.echo("• Keep the .faceauth file safe")
+        
+        # Optional: Ask about deleting original
+        click.echo("\n🗑️  Security Recommendation:")
+        if click.confirm("Delete the original unencrypted file for security?"):
+            try:
+                input_path.unlink()
+                click.echo(f"✅ Original file '{filename}' securely deleted")
+            except Exception as e:
+                click.echo(f"⚠️  Could not delete original file: {e}")
+                click.echo("💡 Please delete it manually for security")
+        
+    except FaceAuthenticationError as e:
+        click.echo(f"\n❌ Authentication Error: {e}")
+        click.echo("\n💡 Solutions:")
+        click.echo("• Enroll first: python main.py enroll-face")
+        click.echo("• Check webcam connectivity")
+        click.echo("• Ensure good lighting")
+        sys.exit(1)
+    except FileEncryptionError as e:
+        click.echo(f"\n❌ Encryption Error: {e}")
+        click.echo("\n💡 Possible causes:")
+        click.echo("• File is in use by another program")
+        click.echo("• Insufficient disk space")
+        click.echo("• Invalid file permissions")
+        sys.exit(1)
+    except ImportError as e:
+        click.echo(f"\n❌ Missing dependencies: {e}")
+        click.echo("💡 Please install required packages:")
+        click.echo("   pip install -r requirements.txt")
+        sys.exit(1)
+    except KeyboardInterrupt:
+        click.echo("\n\n❌ Encryption cancelled by user")
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"\n💥 Unexpected error: {e}")
+        click.echo("🐛 Please report this issue if it persists")
+        sys.exit(1)
 
 
 @cli.command("decrypt-file")
+@click.argument("filename", type=click.Path(exists=True))
 @click.option(
-    "--file", 
-    "-f", 
-    type=click.Path(exists=True),
-    help="Encrypted file to decrypt (will prompt if not provided)"
+    "--output", 
+    "-o", 
+    type=click.Path(),
+    help="Output path for decrypted file (optional)"
 )
 @click.option(
     "--user-id", 
@@ -270,20 +409,161 @@ def encrypt_file(file, user_id):
     type=str, 
     help="User ID for face authentication (will prompt if not provided)"
 )
-def decrypt_file(file, user_id):
+@click.option(
+    "--model", 
+    "-m", 
+    type=click.Choice(["Facenet", "ArcFace", "VGG-Face", "Facenet512"], case_sensitive=False),
+    default="Facenet",
+    help="Face recognition model to use (default: Facenet)"
+)
+@click.option(
+    "--data-dir",
+    "-d",
+    type=click.Path(),
+    default="face_data",
+    help="Directory containing face data (default: face_data)"
+)
+def decrypt_file(filename, output, user_id, model, data_dir):
     """
     🔓 Decrypt a file using face authentication.
     
-    This command decrypts a previously encrypted file after
-    successful face authentication.
+    This command first authenticates your identity using face verification,
+    then decrypts a .faceauth encrypted file using your password.
+    
+    Security Process:
+    1. Face authentication to verify your identity
+    2. Password prompt for key derivation
+    3. File decryption with AES-256-GCM
+    4. Secure key unwrapping to access encryption keys
     
     Examples:
-        python main.py decrypt-file --file secret.txt.encrypted
-        python main.py decrypt-file --file document.pdf.encrypted --user-id alice
+        python main.py decrypt-file secret.txt.faceauth
+        python main.py decrypt-file document.pdf.faceauth --output document.pdf
+        python main.py decrypt-file data.csv.faceauth --user-id alice
     """
-    click.echo("🔓 File decryption not yet implemented")
-    click.echo("📋 This feature will be available in the next version")
-    click.echo("💡 Use 'enroll-face' to register your face first")
+    click.echo("🔓 Starting FaceAuth file decryption process...")
+    click.echo("=" * 60)
+    
+    try:
+        # Import required modules
+        from authentication import FaceAuthenticator, FaceAuthenticationError
+        from file_handler import decrypt_file as decrypt_file_func, FileEncryptionError, get_encrypted_file_info
+        import getpass
+        from pathlib import Path
+        
+        # Validate input file
+        if not filename.endswith('.faceauth'):
+            click.echo("⚠️  Warning: File doesn't have .faceauth extension")
+            if not click.confirm("Continue anyway?"):
+                sys.exit(0)
+        
+        # Get file information
+        click.echo("📋 Encrypted File Information:")
+        try:
+            file_info = get_encrypted_file_info(filename)
+            click.echo(f"📁 File: {file_info['file_path']}")
+            click.echo(f"📊 Size: {file_info['file_size']:,} bytes")
+            click.echo(f"✅ Valid format: {file_info['is_valid_format']}")
+            
+            if not file_info['is_valid_format']:
+                click.echo("❌ Invalid .faceauth file format")
+                sys.exit(1)
+                
+        except FileEncryptionError as e:
+            click.echo(f"❌ Cannot read encrypted file: {e}")
+            sys.exit(1)
+        
+        # Step 1: Face Authentication Gate
+        click.echo("\n🔍 Step 1: Face Authentication Required")
+        click.echo("⚠️  You must verify your identity before decrypting files")
+        click.echo()
+        
+        # Create authenticator instance
+        authenticator = FaceAuthenticator(model_name=model, data_dir=data_dir)
+        
+        # Perform face verification
+        click.echo("🚀 Starting face verification...")
+        verification_success = authenticator.verify_user_face(user_id)
+        
+        if not verification_success:
+            click.echo("\n❌ AUTHENTICATION FAILED")
+            click.echo("🚫 File decryption requires successful face verification")
+            click.echo("\n💡 Troubleshooting:")
+            click.echo("• Ensure you are enrolled: python main.py enroll-face")
+            click.echo("• Check lighting and camera positioning")
+            click.echo("• Verify your password is correct")
+            sys.exit(1)
+        
+        click.echo("\n✅ AUTHENTICATION SUCCESSFUL")
+        click.echo("🔓 Access granted for file decryption")
+        
+        # Step 2: Get decryption password
+        click.echo("\n🔐 Step 2: Password for File Decryption")
+        click.echo("Enter the password used to encrypt this file:")
+        
+        decryption_password = getpass.getpass("Decryption password: ")
+        if not decryption_password:
+            click.echo("❌ Password is required for file decryption")
+            sys.exit(1)
+        
+        # Step 3: Decrypt the file
+        click.echo("\n🔓 Step 3: Decrypting File")
+        click.echo(f"📁 Encrypted file: {filename}")
+        
+        # Perform decryption
+        click.echo("⚡ Decrypting with AES-256-GCM...")
+        decrypted_file_path = decrypt_file_func(filename, decryption_password, output)
+        
+        # Success report
+        decrypted_path = Path(decrypted_file_path)
+        decrypted_size = decrypted_path.stat().st_size
+        
+        click.echo("\n🎉 DECRYPTION SUCCESSFUL!")
+        click.echo("✅ File decrypted and restored")
+        click.echo(f"🔒 Encrypted file: {filename}")
+        click.echo(f"� Decrypted file: {decrypted_file_path}")
+        click.echo(f"📊 Decrypted size: {decrypted_size:,} bytes")
+        
+        # Security information
+        click.echo("\n🛡️  Security Information:")
+        click.echo("• File decrypted using AES-256-GCM")
+        click.echo("• Encryption keys securely derived from password")
+        click.echo("• Authentication tag verified for integrity")
+        click.echo("• Original encrypted file remains unchanged")
+        
+        # Next steps
+        click.echo("\n📋 Next Steps:")
+        click.echo("• Your file has been successfully restored")
+        click.echo("• Keep the .faceauth file as backup if needed")
+        click.echo("• Consider re-encrypting if security is compromised")
+        
+    except FaceAuthenticationError as e:
+        click.echo(f"\n❌ Authentication Error: {e}")
+        click.echo("\n💡 Solutions:")
+        click.echo("• Enroll first: python main.py enroll-face")
+        click.echo("• Check webcam connectivity")
+        click.echo("• Ensure good lighting")
+        sys.exit(1)
+    except FileEncryptionError as e:
+        click.echo(f"\n❌ Decryption Error: {e}")
+        click.echo("\n💡 Possible causes:")
+        click.echo("• Wrong password")
+        click.echo("• Corrupted encrypted file")
+        click.echo("• Invalid .faceauth file format")
+        click.echo("• Insufficient disk space")
+        sys.exit(1)
+    except ImportError as e:
+        click.echo(f"\n❌ Missing dependencies: {e}")
+        click.echo("💡 Please install required packages:")
+        click.echo("   pip install -r requirements.txt")
+        sys.exit(1)
+    except KeyboardInterrupt:
+        click.echo("\n\n❌ Decryption cancelled by user")
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"\n💥 Unexpected error: {e}")
+        click.echo("🐛 Please report this issue if it persists")
+        sys.exit(1)
 
 
 @cli.command("info")
