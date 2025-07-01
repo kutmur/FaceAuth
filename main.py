@@ -7,10 +7,10 @@ Main CLI interface for the FaceAuth system.
 Provides commands for face enrollment, authentication, and file encryption.
 
 Usage:
-    python main.py enroll-face [--user-id USER] [--model MODEL]
-    python main.py verify-face [--user-id USER]
-    python main.py encrypt-file <filename> [--user-id USER]
-    python main.py decrypt-file <filename> [--output PATH] [--user-id USER]
+    python main.py enroll [--user-id USER] [--model MODEL]
+    python main.py verify [--user-id USER]
+    python main.py encrypt <filename> [--user-id USER]
+    python main.py decrypt <filename> [--output PATH] [--user-id USER]
 """
 
 import click
@@ -36,7 +36,7 @@ def cli():
     pass
 
 
-@cli.command("enroll-face")
+@cli.command("enroll")
 @click.option(
     "--user-id", 
     "-u", 
@@ -59,7 +59,7 @@ def cli():
 )
 def enroll_face(user_id, model, data_dir):
     """
-    📸 Enroll a new user's face into the system.
+    Enroll a new user's face into the system.
     
     This command captures your face using the webcam, generates a secure
     face embedding, and stores it locally in encrypted format.
@@ -70,9 +70,9 @@ def enroll_face(user_id, model, data_dir):
     - Only one person visible in the frame
     
     Examples:
-        python main.py enroll-face
-        python main.py enroll-face --user-id john_doe
-        python main.py enroll-face --user-id alice --model ArcFace
+        python main.py enroll
+        python main.py enroll --user-id john_doe
+        python main.py enroll --user-id alice --model ArcFace
     """
     click.echo("🚀 Starting FaceAuth enrollment process...")
     click.echo("=" * 60)
@@ -98,8 +98,8 @@ def enroll_face(user_id, model, data_dir):
             
             # Next steps
             click.echo("\n📋 Next steps:")
-            click.echo("• Test authentication: python main.py verify-face")
-            click.echo("• Encrypt files: python main.py encrypt-file myfile.txt")
+            click.echo("• Test authentication: python main.py verify")
+            click.echo("• Encrypt files: python main.py encrypt myfile.txt")
             click.echo("• View help: python main.py --help")
             
         else:
@@ -123,7 +123,7 @@ def enroll_face(user_id, model, data_dir):
         sys.exit(1)
 
 
-@cli.command("verify-face")
+@cli.command("verify")
 @click.option(
     "--user-id", 
     "-u", 
@@ -146,22 +146,22 @@ def enroll_face(user_id, model, data_dir):
 )
 def verify_face(user_id, model, data_dir):
     """
-    🔍 Verify your identity using face authentication.
+    Verify your identity using face authentication.
     
     This command compares your current face against stored face data
     to authenticate your identity. The verification process is fast
     and secure, completing in under 2 seconds.
     
     Requirements:
-    - Enrolled face data (use 'enroll-face' first)
+    - Enrolled face data (use 'enroll' first)
     - Working webcam
     - Good lighting conditions
     - Your enrollment password
     
     Examples:
-        python main.py verify-face
-        python main.py verify-face --user-id john_doe
-        python main.py verify-face --user-id alice --model ArcFace
+        python main.py verify
+        python main.py verify --user-id john_doe
+        python main.py verify --user-id alice --model ArcFace
     """
     click.echo("🔍 Starting FaceAuth verification process...")
     click.echo("=" * 60)
@@ -188,7 +188,7 @@ def verify_face(user_id, model, data_dir):
             # Success message
             click.echo("\n🌟 Authentication successful!")
             click.echo("💡 You can now use secure features:")
-            click.echo("• Encrypt files: python main.py encrypt-file myfile.txt")
+            click.echo("• Encrypt files: python main.py encrypt myfile.txt")
             click.echo("• Access protected resources")
             
         else:
@@ -201,7 +201,7 @@ def verify_face(user_id, model, data_dir):
             click.echo("• Ensure good lighting conditions")
             click.echo("• Position face clearly in camera view")
             click.echo("• Remove glasses/masks if possible")
-            click.echo("• Try re-enrolling: python main.py enroll-face")
+            click.echo("• Try re-enrolling: python main.py enroll")
             
             sys.exit(1)
             
@@ -209,7 +209,7 @@ def verify_face(user_id, model, data_dir):
         click.echo(f"\n❌ Authentication Error: {e}")
         click.echo("\n💡 Common solutions:")
         click.echo("• Check if user is enrolled: python main.py info")
-        click.echo("• Enroll first: python main.py enroll-face")
+        click.echo("• Enroll first: python main.py enroll")
         click.echo("• Verify password is correct")
         click.echo("• Ensure webcam is working")
         sys.exit(1)
@@ -228,7 +228,7 @@ def verify_face(user_id, model, data_dir):
         sys.exit(1)
 
 
-@cli.command("encrypt-file")
+@cli.command("encrypt")
 @click.argument("filename", type=click.Path(exists=True))
 @click.option(
     "--user-id", 
@@ -252,7 +252,7 @@ def verify_face(user_id, model, data_dir):
 )
 def encrypt_file(filename, user_id, model, data_dir):
     """
-    🔒 Encrypt a file using face authentication.
+    Encrypt a file using face authentication.
     
     This command first authenticates your identity using face verification,
     then encrypts the specified file with a secure key wrapping approach.
@@ -265,9 +265,9 @@ def encrypt_file(filename, user_id, model, data_dir):
     4. Secure key wrapping to protect encryption keys
     
     Examples:
-        python main.py encrypt-file secret.txt
-        python main.py encrypt-file document.pdf --user-id alice
-        python main.py encrypt-file data.csv --user-id bob --model ArcFace
+        python main.py encrypt secret.txt
+        python main.py encrypt document.pdf --user-id alice
+        python main.py encrypt data.csv --user-id bob --model ArcFace
     """
     click.echo("🔒 Starting FaceAuth file encryption process...")
     click.echo("=" * 60)
@@ -395,7 +395,7 @@ def encrypt_file(filename, user_id, model, data_dir):
         sys.exit(1)
 
 
-@cli.command("decrypt-file")
+@cli.command("decrypt")
 @click.argument("filename", type=click.Path(exists=True))
 @click.option(
     "--output", 
@@ -425,7 +425,7 @@ def encrypt_file(filename, user_id, model, data_dir):
 )
 def decrypt_file(filename, output, user_id, model, data_dir):
     """
-    🔓 Decrypt a file using face authentication.
+    Decrypt a file using face authentication.
     
     This command first authenticates your identity using face verification,
     then decrypts a .faceauth encrypted file using your password.
@@ -437,9 +437,9 @@ def decrypt_file(filename, output, user_id, model, data_dir):
     4. Secure key unwrapping to access encryption keys
     
     Examples:
-        python main.py decrypt-file secret.txt.faceauth
-        python main.py decrypt-file document.pdf.faceauth --output document.pdf
-        python main.py decrypt-file data.csv.faceauth --user-id alice
+        python main.py decrypt secret.txt.faceauth
+        python main.py decrypt document.pdf.faceauth --output document.pdf
+        python main.py decrypt data.csv.faceauth --user-id alice
     """
     click.echo("🔓 Starting FaceAuth file decryption process...")
     click.echo("=" * 60)
