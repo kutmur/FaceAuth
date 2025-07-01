@@ -6,3 +6,7 @@ click>=8.0.0
 Pillow>=9.0.0
 tf-keras>=2.13.0
 tensorflow>=2.13.0
+
+# Development dependencies
+pytest>=7.0.0
+pytest-mock>=3.10.0

@@ -25,7 +25,7 @@ File Format (.faceauth):
 import os
 import struct
 from pathlib import Path
-from typing import bytes, Tuple
+from typing import Tuple
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
