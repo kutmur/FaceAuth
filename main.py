@@ -24,16 +24,45 @@ sys.path.insert(0, str(Path(__file__).parent))
 from enrollment import enroll_new_user, FaceEnrollmentError
 
 
-@click.group()
+@click.group(invoke_without_command=True)
 @click.version_option(version="1.0.0")
-def cli():
+@click.option(
+    "--gui",
+    is_flag=True,
+    help="Launch the graphical user interface instead of CLI"
+)
+@click.pass_context
+def cli(ctx, gui):
     """
     🔐 FaceAuth - Local Face Authentication System
     
     A privacy-first face authentication platform for securing your files.
     All processing happens locally - no cloud, no third parties.
+    
+    Use --gui flag to launch the graphical interface:
+        python main.py --gui
     """
-    pass
+    if gui:
+        # Launch GUI mode
+        try:
+            from gui import FaceAuthGUI
+            click.echo("🚀 Launching FaceAuth GUI...")
+            app = FaceAuthGUI()
+            app.run()
+            ctx.exit()
+        except ImportError as e:
+            click.echo("❌ Error: GUI dependencies not available")
+            click.echo(f"   {str(e)}")
+            click.echo("\n💡 To use GUI mode, ensure tkinter is installed:")
+            click.echo("   sudo apt-get install python3-tk  # Ubuntu/Debian")
+            click.echo("   brew install python-tk          # macOS")
+            ctx.exit(1)
+        except Exception as e:
+            click.echo(f"❌ GUI Error: {str(e)}")
+            ctx.exit(1)
+    elif ctx.invoked_subcommand is None:
+        # Show help if no command is provided and no GUI flag
+        click.echo(ctx.get_help())
 
 
 @cli.command("enroll")

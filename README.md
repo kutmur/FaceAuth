@@ -1,7 +1,15 @@
 # 🔐 FaceAuth
 
 ```
-███████╗ █████╗  ██████╗███████╗     █████╗ ██╗   ██╗████████╗██╗  ██╗
+███████╗ █████╗  ██- 🎯 **Face Enrollment**: Register your face with real-time feedback and quality validation
+- 🔓 **Face Verification**: Instant identity verification via webcam
+- 📁 **File Encryption**: Encrypt any file using your face as the key
+- 🔓 **File Decryption**: Decrypt files with face authentication
+- 💻 **CLI Interface**: Simple, powerful command-line tools
+- 🖥️ **GUI Interface**: User-friendly graphical interface (NEW!)
+- 🔐 **Secure Storage**: Military-grade AES-256-GCM encryption
+- 🌐 **Offline First**: Zero network dependencies
+- 🔧 **Multiple AI Models**: Facenet, ArcFace, VGG-Face support████╗     █████╗ ██╗   ██╗████████╗██╗  ██╗
 ██╔════╝██╔══██╗██╔════╝██╔════╝    ██╔══██╗██║   ██║╚══██╔══╝██║  ██║
 █████╗  ███████║██║     █████╗      ███████║██║   ██║   ██║   ███████║
 ██╔══╝  ██╔══██║██║     ██╔══╝      ██╔══██║██║   ██║   ██║   ██╔══██║
@@ -104,7 +112,33 @@ python setup.py
 
 ---
 
-## ⚡️ Usage (CLI Commands)
+## ⚡️ Usage
+
+FaceAuth offers both command-line and graphical interfaces:
+
+### 🖥️ GUI Interface (Recommended for Beginners)
+
+Launch the user-friendly graphical interface:
+
+```bash
+python main.py --gui
+```
+
+The GUI provides:
+- 🎯 **Intuitive buttons** for each operation
+- 📁 **File dialogs** for easy file selection  
+- ⏱️ **Real-time status** updates
+- 🚨 **Clear error** messages
+- 📖 **Built-in help** and tooltips
+
+**GUI Workflow:**
+1. Launch GUI with `python main.py --gui`
+2. Click "Enroll Face" to register your biometrics
+3. Click "Encrypt File" to secure files with face authentication
+4. Click "Decrypt File" to access your secured files
+5. Monitor the status area for real-time feedback
+
+### 💻 CLI Interface (Advanced Users)
 
 FaceAuth uses a simple command-line interface. Here are the core commands:
 
