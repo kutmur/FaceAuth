@@ -21,7 +21,7 @@ from pathlib import Path
 # Add current directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from enrollment import enroll_new_user, FaceEnrollmentError
+from faceauth.enrollment import enroll_new_user, FaceEnrollmentError
 
 
 @click.group(invoke_without_command=True)
@@ -45,7 +45,7 @@ def cli(ctx, gui):
     if gui:
         # Launch GUI mode
         try:
-            from gui import FaceAuthGUI
+            from faceauth.gui import FaceAuthGUI
             click.echo("🚀 Launching FaceAuth GUI...")
             app = FaceAuthGUI()
             app.run()
@@ -108,7 +108,7 @@ def enroll_face(user_id, model, data_dir):
     
     try:
         # Import here to avoid issues if dependencies aren't installed
-        from enrollment import FaceEnroller
+        from faceauth.enrollment import FaceEnroller
         
         # Create enroller instance
         enroller = FaceEnroller(model_name=model, data_dir=data_dir)
@@ -197,7 +197,7 @@ def verify_face(user_id, model, data_dir):
     
     try:
         # Import authentication module
-        from authentication import FaceAuthenticator, FaceAuthenticationError
+        from faceauth.authentication import FaceAuthenticator, FaceAuthenticationError
         
         # Create authenticator instance
         authenticator = FaceAuthenticator(model_name=model, data_dir=data_dir)
@@ -303,8 +303,8 @@ def encrypt_file(filename, user_id, model, data_dir):
     
     try:
         # Import required modules
-        from authentication import FaceAuthenticator, FaceAuthenticationError
-        from file_handler import encrypt_file as encrypt_file_func, FileEncryptionError
+        from faceauth.authentication import FaceAuthenticator, FaceAuthenticationError
+        from faceauth.file_handler import encrypt_file as encrypt_file_func, FileEncryptionError
         import getpass
         from pathlib import Path
         
@@ -475,8 +475,8 @@ def decrypt_file(filename, output, user_id, model, data_dir):
     
     try:
         # Import required modules
-        from authentication import FaceAuthenticator, FaceAuthenticationError
-        from file_handler import decrypt_file as decrypt_file_func, FileEncryptionError, get_encrypted_file_info
+        from faceauth.authentication import FaceAuthenticator, FaceAuthenticationError
+        from faceauth.file_handler import decrypt_file as decrypt_file_func, FileEncryptionError, get_encrypted_file_info
         import getpass
         from pathlib import Path
         

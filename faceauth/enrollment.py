@@ -20,7 +20,7 @@ from typing import Optional, Tuple, Dict, Any
 from deepface import DeepFace
 from pathlib import Path
 import getpass
-from crypto import encrypt_embedding_with_password
+from .crypto import encrypt_embedding_with_password
 
 
 class FaceEnrollmentError(Exception):

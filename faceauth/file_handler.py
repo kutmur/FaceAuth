@@ -31,7 +31,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 
-from crypto import CryptoError
+from .crypto import CryptoError
 
 
 class FileEncryptionError(Exception):

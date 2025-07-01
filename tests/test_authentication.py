@@ -21,11 +21,11 @@ from unittest.mock import patch, MagicMock, mock_open
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from authentication import (
+from faceauth.authentication import (
     FaceAuthenticator,
     FaceAuthenticationError
 )
-from crypto import SecureEmbeddingStorage
+from faceauth.crypto import SecureEmbeddingStorage
 
 
 class TestFaceAuthenticatorInit:
@@ -112,9 +112,9 @@ class TestFaceVerification:
         """Clean up test environment."""
         shutil.rmtree(self.test_dir, ignore_errors=True)
     
-    @patch('authentication.cv2.imwrite')
-    @patch('authentication.tempfile.mkstemp')
-    @patch('authentication.os.close')
+    @patch('faceauth.authentication.cv2.imwrite')
+    @patch('faceauth.authentication.tempfile.mkstemp')
+    @patch('faceauth.authentication.os.close')
     def test_save_frame_for_verification(self, mock_close, mock_mkstemp, mock_imwrite):
         """Test saving frame to temporary file."""
         # Mock tempfile creation
@@ -128,8 +128,8 @@ class TestFaceVerification:
         mock_close.assert_called_once_with(1)
         mock_imwrite.assert_called_once()
     
-    @patch('authentication.DeepFace.verify')
-    @patch('authentication.os.unlink')
+    @patch('faceauth.authentication.DeepFace.verify')
+    @patch('faceauth.authentication.os.unlink')
     @patch.object(FaceAuthenticator, 'save_frame_for_verification')
     def test_verify_face_success(self, mock_save_frame, mock_unlink, mock_deepface_verify):
         """Test successful face verification."""
@@ -156,8 +156,8 @@ class TestFaceVerification:
         # Verify cleanup
         mock_unlink.assert_called_once_with('/tmp/current_frame.jpg')
     
-    @patch('authentication.DeepFace.verify')
-    @patch('authentication.os.unlink')
+    @patch('faceauth.authentication.DeepFace.verify')
+    @patch('faceauth.authentication.os.unlink')
     @patch.object(FaceAuthenticator, 'save_frame_for_verification')
     def test_verify_face_failure(self, mock_save_frame, mock_unlink, mock_deepface_verify):
         """Test failed face verification (faces don't match)."""
@@ -183,8 +183,8 @@ class TestFaceVerification:
         # Verify cleanup
         mock_unlink.assert_called_once_with('/tmp/current_frame.jpg')
     
-    @patch('authentication.DeepFace.verify')
-    @patch('authentication.os.unlink')
+    @patch('faceauth.authentication.DeepFace.verify')
+    @patch('faceauth.authentication.os.unlink')
     @patch.object(FaceAuthenticator, 'save_frame_for_verification')
     def test_verify_face_no_face_detected(self, mock_save_frame, mock_unlink, mock_deepface_verify):
         """Test verification when no face is detected."""
@@ -204,8 +204,8 @@ class TestFaceVerification:
         # Verify cleanup
         mock_unlink.assert_called_once_with('/tmp/current_frame.jpg')
     
-    @patch('authentication.DeepFace.verify')
-    @patch('authentication.os.unlink')
+    @patch('faceauth.authentication.DeepFace.verify')
+    @patch('faceauth.authentication.os.unlink')
     @patch.object(FaceAuthenticator, 'save_frame_for_verification')
     def test_verify_face_multiple_faces(self, mock_save_frame, mock_unlink, mock_deepface_verify):
         """Test verification when multiple faces are detected."""
@@ -225,8 +225,8 @@ class TestFaceVerification:
         # Verify cleanup
         mock_unlink.assert_called_once_with('/tmp/current_frame.jpg')
     
-    @patch('authentication.DeepFace.verify')
-    @patch('authentication.os.unlink')
+    @patch('faceauth.authentication.DeepFace.verify')
+    @patch('faceauth.authentication.os.unlink')
     @patch.object(FaceAuthenticator, 'save_frame_for_verification')
     def test_verify_face_general_error(self, mock_save_frame, mock_unlink, mock_deepface_verify):
         """Test verification with general error."""
@@ -256,8 +256,8 @@ class TestFaceDetection:
         self.authenticator = FaceAuthenticator()
         self.mock_frame = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
     
-    @patch('authentication.cv2.CascadeClassifier')
-    @patch('authentication.cv2.cvtColor')
+    @patch('faceauth.authentication.cv2.CascadeClassifier')
+    @patch('faceauth.authentication.cv2.cvtColor')
     def test_detect_faces_opencv_success(self, mock_cvtcolor, mock_cascade_classifier):
         """Test successful face detection with OpenCV."""
         # Mock grayscale conversion
@@ -277,8 +277,8 @@ class TestFaceDetection:
         assert len(faces) == 1
         assert faces[0] == [100, 100, 200, 200]
     
-    @patch('authentication.cv2.CascadeClassifier')
-    @patch('authentication.cv2.cvtColor')
+    @patch('faceauth.authentication.cv2.CascadeClassifier')
+    @patch('faceauth.authentication.cv2.cvtColor')
     def test_detect_faces_opencv_no_faces(self, mock_cvtcolor, mock_cascade_classifier):
         """Test face detection when no faces are found."""
         # Mock grayscale conversion
@@ -296,7 +296,7 @@ class TestFaceDetection:
         
         assert len(faces) == 0
     
-    @patch('authentication.cv2.CascadeClassifier', side_effect=Exception("OpenCV error"))
+    @patch('faceauth.authentication.cv2.CascadeClassifier', side_effect=Exception("OpenCV error"))
     def test_detect_faces_opencv_error(self, mock_cascade_classifier):
         """Test face detection error handling."""
         faces = self.authenticator.detect_faces_opencv(self.mock_frame)
@@ -313,10 +313,10 @@ class TestVisualizationOverlay:
         self.authenticator = FaceAuthenticator()
         self.mock_frame = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
     
-    @patch('authentication.cv2.getTextSize')
-    @patch('authentication.cv2.rectangle')
-    @patch('authentication.cv2.putText')
-    @patch('authentication.cv2.line')
+    @patch('faceauth.authentication.cv2.getTextSize')
+    @patch('faceauth.authentication.cv2.rectangle')
+    @patch('faceauth.authentication.cv2.putText')
+    @patch('faceauth.authentication.cv2.line')
     def test_draw_verification_overlay(self, mock_line, mock_puttext, mock_rectangle, mock_gettextsize):
         """Test drawing verification overlay on frame."""
         # Mock text size calculation
@@ -424,7 +424,7 @@ class TestErrorHandling:
         with pytest.raises(FaceAuthenticationError, match="No face data found"):
             self.authenticator.load_stored_embedding("nonexistent_user", "password")
     
-    @patch('authentication.os.path.exists', return_value=False)
+    @patch('faceauth.authentication.os.path.exists', return_value=False)
     def test_data_directory_not_exists(self, mock_exists):
         """Test behavior when data directory doesn't exist."""
         with pytest.raises(FaceAuthenticationError, match="No face data found"):

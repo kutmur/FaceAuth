@@ -20,7 +20,7 @@ from unittest.mock import patch, mock_open, MagicMock
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from file_handler import (
+from faceauth.file_handler import (
     generate_file_key,
     derive_key_from_password,
     encrypt_file_key,

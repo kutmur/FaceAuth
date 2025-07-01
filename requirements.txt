@@ -1,12 +1,20 @@
+# FaceAuth Production Dependencies
+# Core libraries required to run the application
+
+# Computer Vision and Face Recognition
 opencv-python>=4.8.0
 deepface>=0.0.79
 numpy>=1.21.0
+
+# Cryptography and Security
 cryptography>=41.0.0
+
+# CLI Framework
 click>=8.0.0
+
+# Image Processing
 Pillow>=9.0.0
+
+# Deep Learning Backend
 tf-keras>=2.13.0
 tensorflow>=2.13.0
-
-# Development dependencies
-pytest>=7.0.0
-pytest-mock>=3.10.0

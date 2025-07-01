@@ -25,7 +25,7 @@ import getpass
 from deepface import DeepFace
 import tempfile
 
-from crypto import decrypt_embedding, CryptoError
+from .crypto import decrypt_embedding, CryptoError
 
 
 class FaceAuthenticationError(Exception):

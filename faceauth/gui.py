@@ -286,7 +286,7 @@ class FaceAuthGUI:
         """Background worker for face enrollment."""
         try:
             # Import enrollment module
-            from enrollment import FaceEnroller
+            from .enrollment import FaceEnroller
             
             self.status_queue.put({
                 'type': 'status',
@@ -362,7 +362,7 @@ class FaceAuthGUI:
     def _finish_enrollment(self, user_id: str, password: str):
         """Finish the enrollment process."""
         try:
-            from crypto import SecureEmbeddingStorage
+            from .crypto import SecureEmbeddingStorage
             import numpy as np
             
             self.status_queue.put({
@@ -470,7 +470,7 @@ class FaceAuthGUI:
     def _finish_encryption(self, file_path: str, password: str):
         """Finish the encryption process."""
         try:
-            from file_handler import encrypt_file
+            from .file_handler import encrypt_file
             
             self.status_queue.put({
                 'type': 'status',
@@ -567,7 +567,7 @@ class FaceAuthGUI:
     def _finish_decryption(self, file_path: str, password: str):
         """Finish the decryption process."""
         try:
-            from file_handler import decrypt_file
+            from .file_handler import decrypt_file
             
             self.status_queue.put({
                 'type': 'status',

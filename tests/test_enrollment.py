@@ -22,11 +22,11 @@ from unittest.mock import patch, MagicMock, mock_open
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from enrollment import (
+from faceauth.enrollment import (
     FaceEnroller,
     FaceEnrollmentError
 )
-from crypto import SecureEmbeddingStorage
+from faceauth.crypto import SecureEmbeddingStorage
 
 
 class TestFaceEnrollerInit:
@@ -34,7 +34,7 @@ class TestFaceEnrollerInit:
     
     def test_init_default_params(self):
         """Test initialization with default parameters."""
-        with patch('enrollment.Path.mkdir'):  # Mock directory creation
+        with patch('faceauth.enrollment.Path.mkdir'):  # Mock directory creation
             enroller = FaceEnroller()
             
             assert enroller.model_name == "Facenet"
@@ -48,7 +48,7 @@ class TestFaceEnrollerInit:
         custom_model = "ArcFace"
         custom_dir = "custom_enrollment_data"
         
-        with patch('enrollment.Path.mkdir'):  # Mock directory creation
+        with patch('faceauth.enrollment.Path.mkdir'):  # Mock directory creation
             enroller = FaceEnroller(model_name=custom_model, data_dir=custom_dir)
             
             assert enroller.model_name == custom_model
@@ -60,7 +60,7 @@ class TestCameraInitialization:
     
     def setup_method(self):
         """Set up test environment."""
-        with patch('enrollment.Path.mkdir'):
+        with patch('faceauth.enrollment.Path.mkdir'):
             self.enroller = FaceEnroller()
     
     @patch('enrollment.cv2.VideoCapture')
@@ -103,7 +103,7 @@ class TestFaceDetection:
     
     def setup_method(self):
         """Set up test environment."""
-        with patch('enrollment.Path.mkdir'):
+        with patch('faceauth.enrollment.Path.mkdir'):
             self.enroller = FaceEnroller()
         self.mock_frame = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
     
@@ -176,7 +176,7 @@ class TestFaceEmbeddingGeneration:
     
     def setup_method(self):
         """Set up test environment."""
-        with patch('enrollment.Path.mkdir'):
+        with patch('faceauth.enrollment.Path.mkdir'):
             self.enroller = FaceEnroller()
         self.mock_frame = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
     
@@ -204,7 +204,7 @@ class TestEnrollmentWorkflow:
     def setup_method(self):
         """Set up test environment."""
         self.test_dir = tempfile.mkdtemp()
-        with patch('enrollment.Path.mkdir'):
+        with patch('faceauth.enrollment.Path.mkdir'):
             self.enroller = FaceEnroller(data_dir=self.test_dir)
         
         self.user_id = "test_enrollment_user"
@@ -274,7 +274,7 @@ class TestSecureStorage:
     def setup_method(self):
         """Set up test environment."""
         self.test_dir = tempfile.mkdtemp()
-        with patch('enrollment.Path.mkdir'):
+        with patch('faceauth.enrollment.Path.mkdir'):
             self.enroller = FaceEnroller(data_dir=self.test_dir)
         
         self.user_id = "storage_test_user"
@@ -317,7 +317,7 @@ class TestErrorHandling:
     
     def setup_method(self):
         """Set up test environment."""
-        with patch('enrollment.Path.mkdir'):
+        with patch('faceauth.enrollment.Path.mkdir'):
             self.enroller = FaceEnroller()
     
     def test_invalid_model_name(self):
@@ -332,7 +332,7 @@ class TestErrorHandling:
     
     def test_deepface_model_loading_error(self):
         """Test handling of DeepFace model loading errors."""
-        with patch('enrollment.DeepFace.extract_faces', side_effect=Exception("Model not found")):
+        with patch('faceauth.enrollment.DeepFace.extract_faces', side_effect=Exception("Model not found")):
             mock_frame = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
             
             is_valid, message, face_regions = self.enroller._detect_faces(mock_frame)
@@ -346,7 +346,7 @@ class TestVisualizationAndFeedback:
     
     def setup_method(self):
         """Set up test environment."""
-        with patch('enrollment.Path.mkdir'):
+        with patch('faceauth.enrollment.Path.mkdir'):
             self.enroller = FaceEnroller()
     
     @patch('enrollment.cv2.rectangle')
