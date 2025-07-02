@@ -50,6 +50,9 @@ This document outlines the visual assets needed for the FaceAuth platform to cre
 - `demo-authentication.png` - Authentication in progress
 - `demo-success.png` - Successful authentication
 - `demo-cli.png` - Command-line interface usage
+- `gui-main-window.png` - GUI main interface
+- `gui-camera-preview.png` - Camera preview during face capture
+- `gui-file-operations.png` - File encryption/decryption interface
 
 #### Before/After Comparison
 - `before-after-security.png` - Visual showing unsecured vs. FaceAuth-secured files

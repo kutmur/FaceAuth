@@ -45,6 +45,15 @@ A **privacy-first** face authentication platform that keeps all face data local.
 - **Security Auditing**: Built-in security audit and compliance tools
 - **Cross-Platform**: Works on Windows, macOS, and Linux
 
+### Graphical User Interface
+- **Intuitive GUI**: User-friendly graphical interface built with Tkinter
+- **Real-Time Camera Preview**: Live camera feed with face detection visualization
+- **One-Click Operations**: Simple buttons for enrollment, authentication, and file operations
+- **Visual Feedback**: Clear status indicators and progress messages
+- **File Dialogs**: Easy file selection for encryption and decryption
+- **Help System**: Built-in help and troubleshooting guidance
+- **Cross-Platform GUI**: Native look and feel on all supported platforms
+
 ## 🚀 Quick Start
 
 ### System Requirements
@@ -111,6 +120,22 @@ python main.py encrypt-file document.pdf your-username
 
 # The file will be encrypted and accessible only through face authentication
 ```
+
+#### Using the Graphical Interface
+```bash
+# Launch the GUI application
+python faceauth_gui.py
+
+# Or use the enhanced demo for a guided experience
+python enhanced_demo.py
+```
+
+**GUI Workflow:**
+1. **Start Application** - Launch the FaceAuth GUI
+2. **Enroll Face** - Click "📷 Enroll Face" and follow camera prompts
+3. **Authenticate** - Click "🔐 Authenticate Face" to verify your identity  
+4. **Encrypt Files** - Click "🔒 Encrypt File" to secure your documents
+5. **Decrypt Files** - Click "🔓 Decrypt File" to access encrypted content
 
 #### Decrypt Your Encrypted File
 ```bash

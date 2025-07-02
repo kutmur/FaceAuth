@@ -8,6 +8,8 @@ tensorflow>=2.13.0
 facenet-pytorch>=2.5.3
 torch>=2.0.0
 torchvision>=0.15.0
+face-recognition>=1.3.0
+dlib>=19.24.0
 
 # Security and encryption
 cryptography>=41.0.0
@@ -18,6 +20,10 @@ argon2-cffi>=23.1.0
 click
 tqdm>=4.65.0
 colorama>=0.4.6
+
+# GUI dependencies
+pillow>=10.0.0
+tk
 
 # Development and testing
 pytest>=7.4.0
