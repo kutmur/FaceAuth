@@ -8,7 +8,8 @@ identity verification with comprehensive error handling.
 
 Key Features:
 - Real-time face verification via webcam
-- Uses DeepFace for robust face detection and comparison
+- Direct embedding-to-embedding comparison for maximum security
+- No reference images stored - only encrypted numerical embeddings
 - Secure decryption of stored face embeddings
 - Visual feedback during authentication process
 - Sub-2-second authentication performance
@@ -23,9 +24,10 @@ from typing import Optional, Dict, Any, Tuple
 from pathlib import Path
 import getpass
 from deepface import DeepFace
-import tempfile
+from scipy.spatial.distance import cosine
+import hashlib
 
-from .crypto import decrypt_embedding, CryptoError
+from .crypto import SecureEmbeddingStorage, CryptoError
 
 
 class FaceAuthenticationError(Exception):
@@ -36,7 +38,7 @@ class FaceAuthenticationError(Exception):
 class FaceAuthenticator:
     """
     Real-time face authentication class that compares live video feed
-    against stored encrypted face embeddings.
+    against stored encrypted face embeddings using direct embedding comparison.
     """
     
     def __init__(self, model_name: str = "Facenet", data_dir: str = "face_data"):
@@ -44,14 +46,16 @@ class FaceAuthenticator:
         Initialize the Face Authenticator.
         
         Args:
-            model_name: Deep learning model for face verification
+            model_name: Deep learning model for face embedding generation
             data_dir: Directory containing encrypted face data
         """
         self.model_name = model_name
         self.data_dir = Path(data_dir)
+        self.storage = SecureEmbeddingStorage(str(data_dir))
         
         # Authentication parameters
         self.verification_timeout = 15.0  # Maximum time to attempt verification
+        self.similarity_threshold = 0.6  # Cosine similarity threshold (0.6 = 60% similar)
         self.frame_skip = 2  # Process every nth frame for performance
         self.frame_counter = 0
         
@@ -82,126 +86,124 @@ class FaceAuthenticator:
             FaceAuthenticationError: If loading fails
         """
         try:
-            # Construct file path
-            face_file = self.data_dir / f"{user_id}_face.dat"
+            # Use the secure storage to load embedding
+            embedding = self.storage.load_user_embedding(user_id, password)
+            return embedding
             
-            if not face_file.exists():
+        except CryptoError as e:
+            if "No face data found" in str(e):
                 raise FaceAuthenticationError(
                     f"No face data found for user '{user_id}'. "
                     "Please enroll first using: python main.py enroll-face"
                 )
-            
-            # Read encrypted data
-            with open(face_file, 'rb') as f:
-                encrypted_data = f.read()
-            
-            # Decrypt the embedding
-            embedding = decrypt_embedding(encrypted_data, password)
-            
-            # Verify embedding integrity
-            if not isinstance(embedding, np.ndarray):
-                raise FaceAuthenticationError("Invalid embedding format")
-            
-            return embedding
-            
-        except CryptoError as e:
-            if "Decryption failed" in str(e):
+            elif "Decryption failed" in str(e):
                 raise FaceAuthenticationError("Incorrect password or corrupted face data")
             else:
                 raise FaceAuthenticationError(f"Decryption error: {str(e)}")
         except Exception as e:
             raise FaceAuthenticationError(f"Failed to load face data: {str(e)}")
 
-
-    def save_frame_for_verification(self, frame: np.ndarray) -> str:
+    def generate_live_embedding(self, frame: np.ndarray) -> np.ndarray:
         """
-        Save a frame to temporary file for DeepFace verification.
+        Generate face embedding from a live webcam frame.
         
         Args:
-            frame: OpenCV frame to save
+            frame: OpenCV frame containing a face
             
         Returns:
-            Path to temporary image file
+            Face embedding as NumPy array
+            
+        Raises:
+            FaceAuthenticationError: If embedding generation fails
         """
-        # Create temporary file
-        temp_fd, temp_path = tempfile.mkstemp(suffix='.jpg')
-        os.close(temp_fd)
-        
-        # Save frame as JPEG
-        cv2.imwrite(temp_path, frame)
-        
-        return temp_path
+        try:
+            # Generate embedding using DeepFace
+            embedding = DeepFace.represent(
+                img_path=frame,
+                model_name=self.model_name,
+                enforce_detection=True,
+                detector_backend='opencv'
+            )
+            
+            # Extract the embedding vector
+            if isinstance(embedding, list) and len(embedding) > 0:
+                embedding_vector = np.array(embedding[0]['embedding'])
+            else:
+                embedding_vector = np.array(embedding['embedding'])
+            
+            return embedding_vector
+            
+        except Exception as e:
+            error_msg = str(e).lower()
+            if 'face could not be detected' in error_msg:
+                raise FaceAuthenticationError('NO_FACE_DETECTED')
+            elif 'more than one face' in error_msg:
+                raise FaceAuthenticationError('MULTIPLE_FACES')
+            else:
+                raise FaceAuthenticationError(f'EMBEDDING_ERROR: {str(e)}')
 
+    def compare_embeddings(self, embedding1: np.ndarray, embedding2: np.ndarray) -> Dict[str, float]:
+        """
+        Compare two face embeddings using cosine similarity.
+        
+        Args:
+            embedding1: First face embedding
+            embedding2: Second face embedding
+            
+        Returns:
+            Dictionary with similarity score and verification result
+        """
+        try:
+            # Normalize embeddings to unit vectors
+            embedding1_norm = embedding1 / np.linalg.norm(embedding1)
+            embedding2_norm = embedding2 / np.linalg.norm(embedding2)
+            
+            # Calculate cosine similarity (1 - cosine distance)
+            cosine_distance = cosine(embedding1_norm, embedding2_norm)
+            similarity = 1 - cosine_distance
+            
+            # Convert to percentage confidence
+            confidence = max(0, min(100, similarity * 100))
+            
+            # Determine if verified based on threshold
+            is_verified = similarity >= self.similarity_threshold
+            
+            return {
+                'verified': is_verified,
+                'similarity': similarity,
+                'confidence': confidence,
+                'distance': cosine_distance,
+                'threshold': self.similarity_threshold
+            }
+            
+        except Exception as e:
+            raise FaceAuthenticationError(f"Embedding comparison failed: {str(e)}")
 
-    def verify_face_against_stored(self, frame: np.ndarray, stored_embedding_path: str) -> Dict[str, Any]:
+    def verify_face_against_stored(self, frame: np.ndarray, stored_embedding: np.ndarray) -> Dict[str, Any]:
         """
         Verify current frame against stored face embedding.
         
         Args:
             frame: Current webcam frame
-            stored_embedding_path: Path to stored reference image
+            stored_embedding: Stored face embedding
             
         Returns:
             Dictionary containing verification result and confidence
         """
         try:
-            # Save current frame to temporary file
-            current_frame_path = self.save_frame_for_verification(frame)
+            # Generate live embedding from frame
+            live_embedding = self.generate_live_embedding(frame)
             
-            try:
-                # Use DeepFace to verify faces
-                result = DeepFace.verify(
-                    img1_path=current_frame_path,
-                    img2_path=stored_embedding_path,
-                    model_name=self.model_name,
-                    enforce_detection=True,
-                    detector_backend='opencv'
-                )
-                
-                # Extract results
-                is_verified = result['verified']
-                distance = result['distance']
-                threshold = result['threshold']
-                
-                # Calculate confidence score (inverse of normalized distance)
-                confidence = max(0, min(100, (1 - (distance / threshold)) * 100))
-                
-                return {
-                    'verified': is_verified,
-                    'confidence': confidence,
-                    'distance': distance,
-                    'threshold': threshold
-                }
-                
-            finally:
-                # Clean up temporary file
-                if os.path.exists(current_frame_path):
-                    os.unlink(current_frame_path)
-                    
+            # Compare embeddings
+            comparison_result = self.compare_embeddings(stored_embedding, live_embedding)
+            
+            return comparison_result
+            
+        except FaceAuthenticationError as e:
+            # Return error information
+            return {'error': str(e)}
         except Exception as e:
-            # Handle various DeepFace exceptions
-            error_msg = str(e).lower()
-            if 'face could not be detected' in error_msg:
-                return {'error': 'NO_FACE_DETECTED'}
-            elif 'more than one face' in error_msg:
-                return {'error': 'MULTIPLE_FACES'}
-            else:
-                return {'error': f'VERIFICATION_ERROR: {str(e)}'}
-
-
-    def create_reference_image_from_embedding(self, user_id: str) -> str:
-        """
-        Create a reference image file from stored embedding for DeepFace verification.
-        Since we can't reconstruct the original image from embedding, we'll need
-        to use the enrollment process differently.
-        
-        For now, we'll use a different approach - direct embedding comparison.
-        """
-        # This is a placeholder - in practice, we'd need to modify our approach
-        # to store a reference image during enrollment, or use embedding comparison
-        reference_path = self.data_dir / f"{user_id}_reference.jpg"
-        return str(reference_path)
-
+            return {'error': f'VERIFICATION_ERROR: {str(e)}'}
 
     def draw_verification_overlay(self, frame: np.ndarray, faces: list = None) -> np.ndarray:
         """
@@ -247,6 +249,11 @@ class FaceAuthenticator:
             cv2.putText(overlay, conf_text, (10, height - 30), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, self.color_info, 2)
         
+        # Draw similarity threshold info
+        threshold_text = f"Threshold: {self.similarity_threshold:.1f} ({self.similarity_threshold*100:.0f}%)"
+        cv2.putText(overlay, threshold_text, (10, height - 60), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.color_info, 1)
+        
         # Draw center crosshair for guidance
         center_x, center_y = width // 2, height // 2
         cv2.line(overlay, (center_x - 20, center_y), (center_x + 20, center_y), 
@@ -268,7 +275,7 @@ class FaceAuthenticator:
         ]
         
         for i, instruction in enumerate(instructions):
-            cv2.putText(overlay, instruction, (10, height - 100 + i * 25), 
+            cv2.putText(overlay, instruction, (10, height - 140 + i * 25), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.color_info, 1)
         
         return overlay
@@ -303,7 +310,7 @@ class FaceAuthenticator:
     def verify_user_face(self, user_id: str = None) -> bool:
         """
         Main face verification function. Opens webcam and performs real-time
-        face authentication against stored embedding.
+        face authentication against stored embedding using direct embedding comparison.
         
         Args:
             user_id: User ID to verify against (will prompt if not provided)
@@ -311,6 +318,8 @@ class FaceAuthenticator:
         Returns:
             True if authentication successful, False otherwise
         """
+        cap = None
+        
         try:
             # Get user ID if not provided
             if not user_id:
@@ -326,18 +335,9 @@ class FaceAuthenticator:
             
             print("🔍 Loading stored face data...")
             
-            # Load stored embedding (for now, we'll check if user exists)
+            # Load stored embedding
             stored_embedding = self.load_stored_embedding(user_id, password)
             print(f"✅ Face data loaded successfully ({len(stored_embedding)} dimensions)")
-            
-            # For this implementation, we'll use a different approach
-            # We'll save a reference image during enrollment and use DeepFace.verify
-            reference_image_path = self.data_dir / f"{user_id}_reference.jpg"
-            
-            if not reference_image_path.exists():
-                print("⚠️  Reference image not found. This version requires re-enrollment.")
-                print("💡 Please run: python main.py enroll-face --user-id " + user_id)
-                return False
             
             # Initialize webcam
             print("📹 Starting webcam...")
@@ -357,6 +357,7 @@ class FaceAuthenticator:
             print("  • Ensure good lighting")
             print("  • Keep your face centered")
             print("  • Press 'q' to quit")
+            print(f"  • Similarity threshold: {self.similarity_threshold:.1f} ({self.similarity_threshold*100:.0f}%)")
             print()
             
             # Verification loop
@@ -389,9 +390,9 @@ class FaceAuthenticator:
                 # Perform verification at intervals
                 if (current_time - last_verification_time) >= verification_interval:
                     if len(faces) == 1:
-                        # Attempt verification with DeepFace
+                        # Attempt verification with direct embedding comparison
                         verification_result = self.verify_face_against_stored(
-                            frame, str(reference_image_path)
+                            frame, stored_embedding
                         )
                         
                         if 'error' not in verification_result:
@@ -405,18 +406,16 @@ class FaceAuthenticator:
                                 cv2.imshow('FaceAuth - Verification', frame_with_overlay)
                                 cv2.waitKey(2000)  # Show success for 2 seconds
                                 
-                                cap.release()
-                                cv2.destroyAllWindows()
                                 return True
                             else:
-                                self.current_status = "ACCESS DENIED"
+                                self.current_status = f"ACCESS DENIED (Confidence: {verification_result['confidence']:.1f}%)"
                                 self.confidence_score = verification_result['confidence']
                         else:
                             # Handle errors
                             error = verification_result['error']
-                            if error == 'NO_FACE_DETECTED':
+                            if 'NO_FACE_DETECTED' in error:
                                 self.current_status = "NO FACE DETECTED"
-                            elif error == 'MULTIPLE_FACES':
+                            elif 'MULTIPLE_FACES' in error:
                                 self.current_status = "MULTIPLE FACES"
                             else:
                                 self.current_status = "VERIFICATION ERROR"
@@ -445,15 +444,8 @@ class FaceAuthenticator:
                 if key == ord('q'):
                     break
             
-            # Cleanup
-            cap.release()
-            cv2.destroyAllWindows()
-            
             # Return result
-            if self.current_status == "ACCESS GRANTED":
-                return True
-            else:
-                return False
+            return self.current_status == "ACCESS GRANTED"
                 
         except FaceAuthenticationError:
             raise
@@ -462,6 +454,11 @@ class FaceAuthenticator:
             return False
         except Exception as e:
             raise FaceAuthenticationError(f"Verification failed: {str(e)}")
+        finally:
+            # Cleanup - Always release resources
+            if cap is not None:
+                cap.release()
+            cv2.destroyAllWindows()
 
 
 def verify_user_face(user_id: str = None, model_name: str = "Facenet", 

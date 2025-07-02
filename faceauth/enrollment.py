@@ -20,7 +20,7 @@ from typing import Optional, Tuple, Dict, Any
 from deepface import DeepFace
 from pathlib import Path
 import getpass
-from .crypto import encrypt_embedding_with_password
+from .crypto import SecureEmbeddingStorage
 
 
 class FaceEnrollmentError(Exception):
@@ -45,6 +45,7 @@ class FaceEnroller:
         self.model_name = model_name
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(exist_ok=True)
+        self.storage = SecureEmbeddingStorage(str(data_dir))
         
         # Face detection parameters
         self.min_confidence = 0.7
@@ -163,14 +164,16 @@ class FaceEnroller:
         Returns:
             Captured face image as numpy array
         """
-        cap = self._initialize_camera()
-        frame_count = 0
-        
-        print("🎯 Face capture started. Position yourself in front of the camera...")
-        print("📸 Press SPACE when you see '✅ Face detected' message")
-        print("❌ Press ESC to cancel enrollment")
+        cap = None
         
         try:
+            cap = self._initialize_camera()
+            frame_count = 0
+            
+            print("🎯 Face capture started. Position yourself in front of the camera...")
+            print("📸 Press SPACE when you see '✅ Face detected' message")
+            print("❌ Press ESC to cancel enrollment")
+            
             while True:
                 ret, frame = cap.read()
                 if not ret:
@@ -224,8 +227,14 @@ class FaceEnroller:
                 
                 frame_count += 1
                 
+        except FaceEnrollmentError:
+            raise
+        except Exception as e:
+            raise FaceEnrollmentError(f"Face capture failed: {str(e)}")
         finally:
-            cap.release()
+            # Always cleanup resources
+            if cap is not None:
+                cap.release()
             cv2.destroyAllWindows()
     
     def _generate_embedding(self, face_image: np.ndarray) -> np.ndarray:
@@ -276,43 +285,14 @@ class FaceEnroller:
         try:
             print("🔐 Encrypting and saving face embedding...")
             
-            # Encrypt the embedding with password
-            encrypted_data = encrypt_embedding_with_password(embedding, password)
-            
-            # Save to file
-            file_path = self.data_dir / f"{user_id}_face.dat"
-            with open(file_path, 'wb') as f:
-                f.write(encrypted_data)
+            # Use SecureEmbeddingStorage to save
+            file_path = self.storage.save_user_embedding(user_id, embedding, password)
             
             print(f"✅ Face data encrypted and saved to: {file_path}")
             return str(file_path)
             
         except Exception as e:
             raise FaceEnrollmentError(f"Failed to save encrypted embedding: {str(e)}")
-    
-    def _save_reference_image(self, face_image: np.ndarray, user_id: str) -> str:
-        """
-        Save a reference image for authentication purposes.
-        
-        Args:
-            face_image: Captured face image
-            user_id: User identifier
-            
-        Returns:
-            Path to saved reference image
-        """
-        try:
-            print("📸 Saving reference image for authentication...")
-            
-            # Save reference image
-            reference_path = self.data_dir / f"{user_id}_reference.jpg"
-            cv2.imwrite(str(reference_path), face_image)
-            
-            print(f"✅ Reference image saved to: {reference_path}")
-            return str(reference_path)
-            
-        except Exception as e:
-            raise FaceEnrollmentError(f"Failed to save reference image: {str(e)}")
     
     def enroll_new_user(self, user_id: str = None) -> Dict[str, Any]:
         """
@@ -332,8 +312,7 @@ class FaceEnroller:
                     raise FaceEnrollmentError("User ID cannot be empty")
             
             # Check if user already exists
-            existing_file = self.data_dir / f"{user_id}_face.dat"
-            if existing_file.exists():
+            if self.storage.user_exists(user_id):
                 overwrite = input(f"⚠️  User '{user_id}' already exists. Overwrite? (y/N): ").strip().lower()
                 if overwrite != 'y':
                     raise FaceEnrollmentError("❌ Enrollment cancelled - user already exists")
@@ -349,6 +328,8 @@ class FaceEnroller:
             
             print(f"\n🚀 Starting face enrollment for user: {user_id}")
             print("=" * 50)
+            print("🔒 SECURITY: Only encrypted numerical embeddings will be stored")
+            print("📸 NO images will be saved - maximum privacy protection")
             
             # Step 1: Capture face image
             face_image = self._capture_face_image()
@@ -359,15 +340,11 @@ class FaceEnroller:
             # Step 3: Save encrypted embedding
             file_path = self._save_encrypted_embedding(embedding, user_id, password)
             
-            # Step 4: Save reference image for authentication
-            reference_path = self._save_reference_image(face_image, user_id)
-            
             # Success
             result = {
                 'success': True,
                 'user_id': user_id,
                 'file_path': file_path,
-                'reference_path': reference_path,
                 'embedding_size': len(embedding),
                 'model_used': self.model_name,
                 'message': f'✅ Face enrollment completed successfully for user: {user_id}'
@@ -381,6 +358,7 @@ class FaceEnroller:
             print(f"📊 Embedding dimension: {len(embedding)}")
             print("🔐 Your face data is encrypted and stored locally")
             print("⚠️  Remember your password - it cannot be recovered!")
+            print("🔒 SECURITY: Only numerical embeddings are stored - no images!")
             
             return result
             

@@ -187,6 +187,126 @@ def encrypt_file_content(file_data: bytes, file_key: bytes) -> bytes:
         raise FileEncryptionError(f"File content encryption failed: {str(e)}")
 
 
+def encrypt_file_content_chunked(input_file_path: str, output_file, file_key: bytes, chunk_size: int = 8192) -> bytes:
+    """
+    Encrypt file content using AES-GCM with chunked processing for large files.
+    
+    Args:
+        input_file_path: Path to input file
+        output_file: Open file handle for output
+        file_key: Encryption key for the file
+        chunk_size: Size of chunks to process (default 8KB)
+        
+    Returns:
+        nonce + auth_tag (header for later decryption)
+    """
+    try:
+        # Generate random nonce
+        nonce = os.urandom(12)
+        
+        # Create cipher
+        cipher = Cipher(
+            algorithms.AES(file_key),
+            modes.GCM(nonce),
+            backend=default_backend()
+        )
+        encryptor = cipher.encryptor()
+        
+        # Write nonce first
+        output_file.write(nonce)
+        
+        # Process file in chunks
+        with open(input_file_path, 'rb') as input_file:
+            while True:
+                chunk = input_file.read(chunk_size)
+                if not chunk:
+                    break
+                encrypted_chunk = encryptor.update(chunk)
+                output_file.write(encrypted_chunk)
+        
+        # Finalize and get tag
+        encryptor.finalize()
+        auth_tag = encryptor.tag
+        
+        # Write authentication tag at the end
+        output_file.write(auth_tag)
+        
+        return nonce + auth_tag  # Return header info for verification
+        
+    except Exception as e:
+        raise FileEncryptionError(f"Chunked file content encryption failed: {str(e)}")
+
+
+def decrypt_file_content_chunked(input_file, output_file_path: str, file_key: bytes, encrypted_size: int, chunk_size: int = 8192) -> None:
+    """
+    Decrypt file content using AES-GCM with chunked processing for large files.
+    
+    Args:
+        input_file: Open file handle positioned at encrypted content start
+        output_file_path: Path where to write decrypted content
+        file_key: Decryption key for the file
+        encrypted_size: Size of encrypted content section
+        chunk_size: Size of chunks to process (default 8KB)
+        
+    Raises:
+        FileEncryptionError: If decryption fails
+    """
+    try:
+        # Read nonce (first 12 bytes)
+        nonce = input_file.read(12)
+        if len(nonce) != 12:
+            raise FileEncryptionError("Invalid encrypted file: missing or incomplete nonce")
+        
+        # Read authentication tag (last 16 bytes of encrypted section)
+        # We need to read it first to initialize the decryptor
+        current_pos = input_file.tell()
+        input_file.seek(current_pos + encrypted_size - 28)  # -28 = -12 (nonce) - 16 (tag)
+        auth_tag = input_file.read(16)
+        if len(auth_tag) != 16:
+            raise FileEncryptionError("Invalid encrypted file: missing or incomplete authentication tag")
+        
+        # Go back to start of encrypted content (after nonce)
+        input_file.seek(current_pos)
+        
+        # Create cipher with tag
+        cipher = Cipher(
+            algorithms.AES(file_key),
+            modes.GCM(nonce, auth_tag),
+            backend=default_backend()
+        )
+        decryptor = cipher.decryptor()
+        
+        # Process file in chunks
+        remaining_bytes = encrypted_size - 28  # Total encrypted content size minus nonce and tag
+        
+        with open(output_file_path, 'wb') as output_file:
+            while remaining_bytes > 0:
+                # Read chunk, but don't exceed remaining bytes
+                chunk_to_read = min(chunk_size, remaining_bytes)
+                encrypted_chunk = input_file.read(chunk_to_read)
+                
+                if not encrypted_chunk:
+                    raise FileEncryptionError("Unexpected end of encrypted file")
+                
+                # Decrypt chunk
+                decrypted_chunk = decryptor.update(encrypted_chunk)
+                output_file.write(decrypted_chunk)
+                
+                remaining_bytes -= len(encrypted_chunk)
+        
+        # Finalize decryption (this verifies the authentication tag)
+        decryptor.finalize()
+        
+    except Exception as e:
+        # Check if it's an authentication failure
+        if "authentication" in str(e).lower() or "tag" in str(e).lower():
+            raise FileEncryptionError(
+                "File content authentication failed. The encrypted file may be corrupted."
+            )
+        else:
+            raise FileEncryptionError(f"Chunked file content decryption failed: {str(e)}")
+
+
 def decrypt_file_content(encrypted_content_data: bytes, file_key: bytes) -> bytes:
     """
     Decrypt file content using AES-GCM.
@@ -230,7 +350,7 @@ def decrypt_file_content(encrypted_content_data: bytes, file_key: bytes) -> byte
             raise FileEncryptionError(f"File content decryption failed: {str(e)}")
 
 
-def encrypt_file(file_path: str, password: str) -> str:
+def encrypt_file(file_path: str, password: str, use_chunked_processing: bool = True, chunk_threshold: int = 50 * 1024 * 1024) -> str:
     """
     Encrypt a file using the secure key wrapping approach.
     
@@ -244,6 +364,8 @@ def encrypt_file(file_path: str, password: str) -> str:
     Args:
         file_path: Path to the file to encrypt
         password: User password for key protection
+        use_chunked_processing: Whether to use chunked processing for large files
+        chunk_threshold: File size threshold for chunked processing (default 50MB)
         
     Returns:
         Path to the created encrypted file
@@ -260,44 +382,66 @@ def encrypt_file(file_path: str, password: str) -> str:
         if not input_path.is_file():
             raise FileEncryptionError(f"Path is not a file: {file_path}")
         
-        # Read file content
-        try:
-            with open(input_path, 'rb') as f:
-                file_data = f.read()
-        except Exception as e:
-            raise FileEncryptionError(f"Cannot read file: {str(e)}")
-        
-        if len(file_data) == 0:
-            raise FileEncryptionError("Cannot encrypt empty file")
+        # Check file size
+        file_size = input_path.stat().st_size
+        if file_size == 0:
+            raise FileEncryptionError("Cannot encrypt empty file. The file must contain data to be encrypted.")
         
         # Step 1: Generate random File Key
         file_key = generate_file_key()
         
-        # Step 2: Encrypt file content with File Key
-        encrypted_content = encrypt_file_content(file_data, file_key)
-        
-        # Step 3: Derive password key
+        # Step 2: Derive password key
         password_key, salt = derive_key_from_password(password)
         
-        # Step 4: Encrypt File Key with password key
+        # Step 3: Encrypt File Key with password key
         encrypted_file_key = encrypt_file_key(file_key, password_key)
         
-        # Step 5: Package everything into .faceauth file format
-        # Format: salt (16) + encrypted_file_key (28) + encrypted_content (variable)
-        output_data = salt + encrypted_file_key + encrypted_content
-        
-        # Write to output file
+        # Step 4: Determine processing method based on file size
         output_path = input_path.with_suffix(input_path.suffix + '.faceauth')
-        try:
-            with open(output_path, 'wb') as f:
-                f.write(output_data)
-        except Exception as e:
-            raise FileEncryptionError(f"Cannot write encrypted file: {str(e)}")
+        
+        if use_chunked_processing and file_size > chunk_threshold:
+            # Large file: use chunked processing
+            print(f"🔄 Processing large file ({file_size / (1024*1024):.1f} MB) using chunked encryption...")
+            
+            try:
+                with open(output_path, 'wb') as output_file:
+                    # Write file format header: salt + encrypted_file_key
+                    output_file.write(salt + encrypted_file_key)
+                    
+                    # Encrypt content in chunks
+                    encrypt_file_content_chunked(str(input_path), output_file, file_key)
+                    
+            except Exception as e:
+                # Clean up partial file on error
+                if output_path.exists():
+                    output_path.unlink()
+                raise FileEncryptionError(f"Chunked encryption failed: {str(e)}")
+        else:
+            # Small file: use in-memory processing
+            try:
+                with open(input_path, 'rb') as f:
+                    file_data = f.read()
+            except Exception as e:
+                raise FileEncryptionError(f"Cannot read file: {str(e)}")
+            
+            # Encrypt file content in memory
+            encrypted_content = encrypt_file_content(file_data, file_key)
+            
+            # Package everything into .faceauth file format
+            output_data = salt + encrypted_file_key + encrypted_content
+            
+            # Write to output file
+            try:
+                with open(output_path, 'wb') as f:
+                    f.write(output_data)
+            except Exception as e:
+                raise FileEncryptionError(f"Cannot write encrypted file: {str(e)}")
         
         # Securely clear sensitive data from memory (best effort)
         file_key = os.urandom(32)  # Overwrite with random data
         password_key = os.urandom(32)  # Overwrite with random data
         
+        print(f"✅ File encrypted successfully: {output_path}")
         return str(output_path)
         
     except FileEncryptionError:
@@ -306,7 +450,7 @@ def encrypt_file(file_path: str, password: str) -> str:
         raise FileEncryptionError(f"Unexpected encryption error: {str(e)}")
 
 
-def decrypt_file(encrypted_file_path: str, password: str, output_path: str = None) -> str:
+def decrypt_file(encrypted_file_path: str, password: str, output_path: str = None, use_chunked_processing: bool = True, chunk_threshold: int = 50 * 1024 * 1024) -> str:
     """
     Decrypt a file encrypted with encrypt_file().
     
@@ -321,6 +465,8 @@ def decrypt_file(encrypted_file_path: str, password: str, output_path: str = Non
         encrypted_file_path: Path to the .faceauth encrypted file
         password: User password for key derivation
         output_path: Optional output path (defaults to removing .faceauth extension)
+        use_chunked_processing: Whether to use chunked processing for large files
+        chunk_threshold: File size threshold for chunked processing (default 50MB)
         
     Returns:
         Path to the decrypted file
@@ -337,16 +483,12 @@ def decrypt_file(encrypted_file_path: str, password: str, output_path: str = Non
         if not input_path.is_file():
             raise FileEncryptionError(f"Path is not a file: {encrypted_file_path}")
         
-        # Read encrypted file
-        try:
-            with open(input_path, 'rb') as f:
-                encrypted_data = f.read()
-        except Exception as e:
-            raise FileEncryptionError(f"Cannot read encrypted file: {str(e)}")
+        # Check file size for processing method
+        file_size = input_path.stat().st_size
         
         # Validate minimum file size for .faceauth format
         min_size = 16 + 28 + 12 + 16  # salt + encrypted_file_key + content_nonce + content_tag
-        if len(encrypted_data) < min_size:
+        if file_size < min_size:
             raise FileEncryptionError(
                 "Invalid encrypted file format. This doesn't appear to be a valid .faceauth file.\n"
                 "• File may be corrupted\n"
@@ -354,45 +496,7 @@ def decrypt_file(encrypted_file_path: str, password: str, output_path: str = Non
                 "• File may be incomplete"
             )
         
-        # Extract components from .faceauth file structure
-        # Format: salt (16) + encrypted_file_key (28) + encrypted_content (variable)
-        salt = encrypted_data[:16]
-        encrypted_file_key = encrypted_data[16:44]  # 12 + 16 + 16 = 44 bytes
-        encrypted_content = encrypted_data[44:]
-        
-        # Validate extracted components
-        if len(encrypted_file_key) != 28:  # 12 nonce + 16 key + 16 tag
-            raise FileEncryptionError("Invalid file format: corrupted file key section")
-        
-        if len(encrypted_content) < 28:  # Minimum: 12 nonce + 16 tag + some content
-            raise FileEncryptionError("Invalid file format: corrupted content section")
-        
-        # Step 1: Derive password key using stored salt
-        password_key, _ = derive_key_from_password(password, salt)
-        
-        # Step 2: Decrypt File Key (this is where wrong password is usually detected)
-        try:
-            file_key = decrypt_file_key(encrypted_file_key, password_key)
-        except FileEncryptionError as e:
-            # Re-raise with more context about where the failure occurred
-            raise FileEncryptionError(
-                f"Failed to decrypt file key: {str(e)}\n\n"
-                "This is usually caused by:\n"
-                "• Incorrect password\n"
-                "• Corrupted .faceauth file\n"
-                "• File tampering"
-            )
-        
-        # Step 3: Decrypt file content using the unwrapped file key
-        try:
-            file_data = decrypt_file_content(encrypted_content, file_key)
-        except FileEncryptionError as e:
-            raise FileEncryptionError(
-                f"Failed to decrypt file content: {str(e)}\n\n"
-                "The file key was decrypted successfully, but the file content is corrupted."
-            )
-        
-        # Step 4: Determine output path
+        # Determine output path
         if output_path is None:
             if input_path.suffix == '.faceauth':
                 # Remove .faceauth extension to restore original name
@@ -406,21 +510,107 @@ def decrypt_file(encrypted_file_path: str, password: str, output_path: str = Non
         # Ensure output directory exists
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
-        # Step 5: Write decrypted content
-        try:
-            with open(output_path, 'wb') as f:
-                f.write(file_data)
-        except Exception as e:
-            raise FileEncryptionError(f"Cannot write decrypted file: {str(e)}")
+        if use_chunked_processing and file_size > chunk_threshold:
+            # Large file: use chunked processing
+            print(f"🔄 Processing large file ({file_size / (1024*1024):.1f} MB) using chunked decryption...")
+            
+            try:
+                with open(input_path, 'rb') as input_file:
+                    # Read file format header
+                    salt = input_file.read(16)
+                    encrypted_file_key = input_file.read(28)
+                    
+                    if len(salt) != 16 or len(encrypted_file_key) != 28:
+                        raise FileEncryptionError("Invalid file format: corrupted header")
+                    
+                    # Derive password key using stored salt
+                    password_key, _ = derive_key_from_password(password, salt)
+                    
+                    # Decrypt File Key
+                    try:
+                        file_key = decrypt_file_key(encrypted_file_key, password_key)
+                    except FileEncryptionError as e:
+                        raise FileEncryptionError(
+                            f"Failed to decrypt file key: {str(e)}\n\n"
+                            "This is usually caused by:\n"
+                            "• Incorrect password\n"
+                            "• Corrupted .faceauth file\n"
+                            "• File tampering"
+                        )
+                    
+                    # Calculate encrypted content size
+                    encrypted_content_size = file_size - 44  # Total size minus headers
+                    
+                    # Decrypt content in chunks
+                    decrypt_file_content_chunked(input_file, str(output_path), file_key, encrypted_content_size)
+                    
+            except Exception as e:
+                # Clean up partial file on error
+                if output_path.exists():
+                    output_path.unlink()
+                raise FileEncryptionError(f"Chunked decryption failed: {str(e)}")
+        else:
+            # Small file: use in-memory processing  
+            try:
+                with open(input_path, 'rb') as f:
+                    encrypted_data = f.read()
+            except Exception as e:
+                raise FileEncryptionError(f"Cannot read encrypted file: {str(e)}")
+            
+            # Extract components from .faceauth file structure
+            salt = encrypted_data[:16]
+            encrypted_file_key = encrypted_data[16:44]
+            encrypted_content = encrypted_data[44:]
+            
+            # Validate extracted components
+            if len(encrypted_file_key) != 28:
+                raise FileEncryptionError("Invalid file format: corrupted file key section")
+            
+            if len(encrypted_content) < 28:
+                raise FileEncryptionError("Invalid file format: corrupted content section")
+            
+            # Derive password key using stored salt
+            password_key, _ = derive_key_from_password(password, salt)
+            
+            # Decrypt File Key
+            try:
+                file_key = decrypt_file_key(encrypted_file_key, password_key)
+            except FileEncryptionError as e:
+                raise FileEncryptionError(
+                    f"Failed to decrypt file key: {str(e)}\n\n"
+                    "This is usually caused by:\n"
+                    "• Incorrect password\n"
+                    "• Corrupted .faceauth file\n"
+                    "• File tampering"
+                )
+            
+            # Decrypt file content using the unwrapped file key
+            try:
+                file_data = decrypt_file_content(encrypted_content, file_key)
+            except FileEncryptionError as e:
+                raise FileEncryptionError(
+                    f"Failed to decrypt file content: {str(e)}\n\n"
+                    "The file key was decrypted successfully, but the file content is corrupted."
+                )
+            
+            # Write decrypted content
+            try:
+                with open(output_path, 'wb') as f:
+                    f.write(file_data)
+            except Exception as e:
+                raise FileEncryptionError(f"Cannot write decrypted file: {str(e)}")
         
         # Verify file was written correctly
-        if not output_path.exists() or output_path.stat().st_size != len(file_data):
-            raise FileEncryptionError("Failed to write decrypted file completely")
+        if not output_path.exists():
+            raise FileEncryptionError("Failed to write decrypted file")
         
         # Securely clear sensitive data from memory (best effort)
-        file_key = os.urandom(32)  # Overwrite with random data
-        password_key = os.urandom(32)  # Overwrite with random data
+        if 'file_key' in locals():
+            file_key = os.urandom(32)  # Overwrite with random data
+        if 'password_key' in locals():
+            password_key = os.urandom(32)  # Overwrite with random data
         
+        print(f"✅ File decrypted successfully: {output_path}")
         return str(output_path)
         
     except FileEncryptionError:

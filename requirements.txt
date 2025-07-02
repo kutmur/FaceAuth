@@ -15,6 +15,26 @@ click>=8.0.0
 # Image Processing
 Pillow>=9.0.0
 
-# Deep Learning Backend
+# Mathematical operations for embedding comparison
+scipy>=1.9.0
+
+# Deep Learning Backend Configuration
+# =================================
+# 
+# IMPORTANT: Choose ONE of the following TensorFlow configurations:
+#
+# Option 1 (RECOMMENDED): CPU-only version for easy deployment
+# Smaller download (~150MB), works on all systems, no CUDA requirements
 tf-keras>=2.13.0
-tensorflow>=2.13.0
+tensorflow-cpu>=2.13.0
+
+# Option 2: GPU-enabled version for advanced users with CUDA setup
+# Larger download (~500MB+), requires NVIDIA GPU + CUDA drivers
+# Uncomment the lines below and comment out tensorflow-cpu above:
+# tf-keras>=2.13.0 
+# tensorflow>=2.13.0
+
+# Note: If you have a compatible NVIDIA GPU and CUDA installed,
+# you can switch to the GPU version for potentially faster face processing.
+# However, for most users, the CPU version provides adequate performance
+# for real-time face authentication.
