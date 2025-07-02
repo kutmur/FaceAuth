@@ -1,0 +1,63 @@
+MIT License
+
+Copyright (c) 2024 FaceAuth Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+## Additional Terms for Privacy and Security
+
+### Privacy Commitment
+FaceAuth is designed with privacy-first principles. By using this software:
+
+1. All biometric data remains local to your device
+2. No data is transmitted to external servers
+3. Face embeddings are stored securely using industry-standard encryption
+4. Users maintain full control over their biometric data
+
+### Security Disclaimer
+While FaceAuth implements security best practices:
+
+1. This software is provided for educational and personal use
+2. Users are responsible for ensuring compliance with local privacy laws
+3. For production use, please conduct appropriate security audits
+4. The authors are not liable for any security breaches or data loss
+
+### Biometric Data Handling
+Special considerations for biometric data:
+
+1. Face embeddings are one-way mathematical representations
+2. Original images are not stored by default
+3. Users can delete all biometric data at any time
+4. Data portability is supported through standard export functions
+
+### Compliance Notes
+This software may be subject to various regulations including:
+- GDPR (General Data Protection Regulation)
+- CCPA (California Consumer Privacy Act)
+- BIPA (Biometric Information Privacy Acts)
+- Local biometric privacy laws
+
+Users are responsible for ensuring compliance with applicable regulations
+in their jurisdiction.
+
+### Contributing
+By contributing to this project, you agree to license your contributions
+under the same terms as this license.
+
+For more information about privacy and security, see docs/SECURITY.md

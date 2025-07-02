@@ -1,0 +1,43 @@
+# FaceAuth Logo Concept (SVG)
+
+This is a placeholder for the FaceAuth logo. To implement the actual logo, replace this file with:
+
+## SVG Logo Code Template
+
+```svg
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" width="200" height="60">
+  <!-- Background -->
+  <rect width="200" height="60" fill="#2E86AB" rx="8"/>
+  
+  <!-- Shield Icon -->
+  <path d="M20 15 L30 10 L40 15 L40 35 C40 45 30 50 30 50 S20 45 20 35 Z" 
+        fill="white" opacity="0.9"/>
+  
+  <!-- Face Outline in Shield -->
+  <circle cx="30" cy="25" r="4" fill="#2E86AB"/>
+  <path d="M25 35 Q30 40 35 35" stroke="#2E86AB" stroke-width="1.5" fill="none"/>
+  
+  <!-- Text -->
+  <text x="50" y="38" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="white">
+    FaceAuth
+  </text>
+</svg>
+```
+
+## Implementation Instructions
+
+1. Open this template in a vector graphics editor (Inkscape, Illustrator)
+2. Refine the design elements:
+   - Improve shield and face iconography
+   - Adjust typography and spacing
+   - Apply the color palette from VISUAL_ASSETS_PLAN.md
+3. Export as both SVG and PNG formats
+4. Create variations (icon-only, white version, etc.)
+
+## Design Principles
+
+- Privacy-first imagery (shield, lock metaphors)
+- Professional and trustworthy appearance
+- Scalable for different use cases
+- Memorable and distinctive
+- Technology-forward but approachable
