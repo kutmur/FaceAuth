@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# ROBUSTNESS: Forcing 'xcb' platform to prevent Wayland/Qt GUI errors on Linux.
+import os
+os.environ['QT_QPA_PLATFORM'] = 'xcb'
 """
 FaceAuth - Local Face Authentication System
 ===========================================
@@ -15,7 +18,6 @@ Usage:
 
 import click
 import sys
-import os
 from pathlib import Path
 
 # Add current directory to path for imports
@@ -137,6 +139,24 @@ def enroll_face(user_id, model, data_dir):
             
     except FaceEnrollmentError as e:
         click.echo(f"\n❌ Enrollment Error: {e}")
+        
+        # HARDENED: Provide specific guidance for common errors
+        error_str = str(e)
+        if "OpenCV data files missing" in error_str or "haarcascade" in error_str:
+            click.echo("\n🚨 CRITICAL ERROR: OpenCV Environment Corruption Detected!")
+            click.echo("💡 IMMEDIATE FIX:")
+            click.echo("   python main.py setup")
+            click.echo("\n📋 What happened?")
+            click.echo("• Your OpenCV installation is missing essential data files")
+            click.echo("• This causes DeepFace to crash during face detection")
+            click.echo("• The setup command will completely reinstall OpenCV correctly")
+            click.echo("\n⚡ After running setup, enrollment will work perfectly!")
+        else:
+            click.echo("\n💡 Common solutions:")
+            click.echo("• Check if user is enrolled: python main.py info")
+            click.echo("• Verify webcam is working and not in use by another app")
+            click.echo("• Ensure good lighting conditions")
+            click.echo("• Try again: python main.py enroll")
         sys.exit(1)
     except ImportError as e:
         click.echo(f"\n❌ Missing dependencies: {e}")
@@ -550,7 +570,7 @@ def decrypt_file(filename, output, user_id, model, data_dir):
         click.echo("\n🎉 DECRYPTION SUCCESSFUL!")
         click.echo("✅ File decrypted and restored")
         click.echo(f"🔒 Encrypted file: {filename}")
-        click.echo(f"� Decrypted file: {decrypted_file_path}")
+        click.echo(f"🔓 Decrypted file: {decrypted_file_path}")
         click.echo(f"📊 Decrypted size: {decrypted_size:,} bytes")
         
         # Security information
@@ -642,44 +662,129 @@ def info():
             click.echo(f"❌ {package}: Not installed")
     
     click.echo("\n🔗 Quick Start:")
-    click.echo("1. Install dependencies: pip install -r requirements.txt")
-    click.echo("2. Enroll your face: python main.py enroll-face")
-    click.echo("3. Get help: python main.py --help")
+    click.echo("1. 🔧 Fix environment: python main.py setup  (Run this first if ANY issues!)")
+    click.echo("2. ✅ Check status: python main.py info")
+    click.echo("3. 👤 Enroll your face: python main.py enroll")
+    click.echo("4. 📖 Get help: python main.py --help")
+    
+    click.echo("\n🚨 Having Issues?")
+    click.echo("💡 The setup command is your repair tool - it fixes ALL dependency problems!")
+    click.echo("   python main.py setup")
 
 
 @cli.command("setup")
 def setup():
     """
     🛠️ Setup and install FaceAuth dependencies.
-    """
-    click.echo("🛠️ Setting up FaceAuth...")
     
-    # Check if requirements.txt exists
+    This command performs a complete environment repair by:
+    1. Aggressively removing conflicting OpenCV installations
+    2. Upgrading pip to the latest version
+    3. Installing all dependencies from a clean state
+    
+    ⚡ CRITICAL: This command fixes the "haarcascade_frontalface_default.xml" 
+    error that causes enrollment to crash.
+    
+    Run this command whenever you encounter dependency errors.
+    """
+    import subprocess
+    click.echo("🛠️ FaceAuth Environment Repair & Setup")
+    click.echo("=" * 50)
+    click.echo("This will clean your environment and install all dependencies correctly.")
+    click.echo("⏱️  This may take a few minutes...\n")
+
+    # Step 1: Aggressively clean up any conflicting OpenCV installations (nuke and pave)
+    click.echo("🧹 Step 1: Force-cleaning conflicting OpenCV installations...")
+    click.echo("Removing: opencv-python, opencv-python-headless, opencv-contrib-python, opencv-contrib-python-headless")
+    
+    try:
+        result_uninstall = subprocess.run([
+            sys.executable, "-m", "pip", "uninstall", 
+            "opencv-python", "opencv-python-headless", 
+            "opencv-contrib-python", "opencv-contrib-python-headless", "-y"
+        ], capture_output=True, text=True, check=False)
+        
+        if result_uninstall.stdout.strip():
+            click.echo("Removed packages:")
+            click.echo(result_uninstall.stdout)
+        else:
+            click.echo("No conflicting OpenCV packages found.")
+            
+        click.echo("✅ OpenCV cleanup complete.")
+        
+    except Exception as e:
+        click.echo(f"⚠️  Could not uninstall OpenCV packages: {e}")
+        click.echo("Proceeding with setup...")
+
+    # Step 2: Upgrade pip
+    click.echo("\n📦 Step 2: Upgrading pip to latest version...")
+    try:
+        result_pip = subprocess.run([
+            sys.executable, "-m", "pip", "install", "--upgrade", "pip"
+        ], capture_output=True, text=True, check=False)
+        
+        if result_pip.returncode == 0:
+            click.echo("✅ pip upgraded successfully!")
+        else:
+            click.echo("❌ Failed to upgrade pip:")
+            click.echo(result_pip.stderr)
+            click.echo("\n💡 Try manually: python -m pip install --upgrade pip")
+            sys.exit(1)
+            
+    except Exception as e:
+        click.echo(f"❌ pip upgrade failed: {e}")
+        click.echo("💡 Try manually: python -m pip install --upgrade pip")
+        sys.exit(1)
+
+    # Step 3: Validate requirements.txt exists
     if not Path("requirements.txt").exists():
         click.echo("❌ requirements.txt not found")
         click.echo("💡 Please ensure you're in the FaceAuth directory")
         sys.exit(1)
-    
-    click.echo("📦 Installing dependencies...")
+
+    # Step 4: Install all dependencies from clean state
+    click.echo("\n🔧 Step 3: Installing all project dependencies from clean state...")
+    click.echo("📦 Installing from requirements.txt...")
     
     try:
-        import subprocess
         result = subprocess.run([
             sys.executable, "-m", "pip", "install", "-r", "requirements.txt"
-        ], capture_output=True, text=True)
+        ], capture_output=True, text=True, check=False)
         
+        # Show installation output
+        if result.stdout.strip():
+            click.echo("Installation log:")
+            click.echo(result.stdout)
+            
         if result.returncode == 0:
-            click.echo("✅ Dependencies installed successfully!")
-            click.echo("\n🎉 FaceAuth is ready to use!")
-            click.echo("🚀 Try: python main.py enroll-face")
+            click.echo("\n🎉 SETUP COMPLETE!")
+            click.echo("✅ All dependencies are freshly installed and ready")
+            click.echo("🔧 Environment repair successful")
+            
+            # Next steps
+            click.echo("\n🚀 Next Steps:")
+            click.echo("1. Test the setup: python main.py info")
+            click.echo("2. Enroll your face: python main.py enroll")
+            click.echo("3. Start using FaceAuth!")
+            
+            click.echo("\n💡 If you encounter ANY error in the future:")
+            click.echo("   Just run 'python main.py setup' again to fix it.")
+            
         else:
-            click.echo("❌ Installation failed:")
+            click.echo("\n❌ CRITICAL ERROR: Dependency installation failed")
+            click.echo("Error details:")
             click.echo(result.stderr)
+            click.echo("\n� Troubleshooting:")
+            click.echo("1. Ensure you have an active internet connection")
+            click.echo("2. Try manually: pip install -r requirements.txt")
+            click.echo("3. Check if you're in a virtual environment")
+            click.echo("4. Verify Python version compatibility (3.8+)")
             sys.exit(1)
             
     except Exception as e:
-        click.echo(f"❌ Setup failed: {e}")
-        click.echo("💡 Try manually: pip install -r requirements.txt")
+        click.echo(f"\n❌ Setup failed with exception: {e}")
+        click.echo("\n� Manual recovery:")
+        click.echo("   pip install -r requirements.txt")
         sys.exit(1)
 
 

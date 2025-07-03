@@ -16,6 +16,7 @@ import cv2
 import numpy as np
 import os
 import time
+import traceback
 from typing import Optional, Tuple, Dict, Any
 from deepface import DeepFace
 from pathlib import Path
@@ -73,7 +74,7 @@ class FaceEnroller:
     
     def _detect_faces(self, frame: np.ndarray) -> Tuple[bool, str, list]:
         """
-        Detect faces in the frame using DeepFace.
+        Detect faces in the frame using DeepFace with robust error handling.
         
         Args:
             frame: Input frame from webcam
@@ -85,29 +86,69 @@ class FaceEnroller:
             # Use DeepFace for face detection
             faces = DeepFace.extract_faces(
                 img_path=frame,
-                target_size=(224, 224),
                 detector_backend='opencv',
                 enforce_detection=False
             )
             
+            # Check number of faces detected
             if len(faces) == 0:
-                return False, "❌ No face detected", []
+                # UX_IMPROVEMENT: Clear message and red rectangle for no face
+                return False, "❌ No Face Detected. Move closer and face the camera.", []
             elif len(faces) > 1:
-                return False, "❌ Multiple faces detected - please ensure only one person is visible", []
+                # UX_IMPROVEMENT: Clear message and red rectangle for multiple faces
+                return False, "❌ Multiple Faces Detected. Please ensure only one person is in the frame.", []
             else:
                 # Check face quality/size
                 face = faces[0]
-                if face.shape[0] < self.min_face_size[0] or face.shape[1] < self.min_face_size[1]:
+                
+                # BUGFIX: Handle different return types from DeepFace.extract_faces
+                if isinstance(face, dict):
+                    # DeepFace sometimes returns dictionaries, extract the image array
+                    if 'face' in face:
+                        face_array = face['face']
+                    else:
+                        # Assume the whole dict represents the face data
+                        face_array = np.array(list(face.values())[0]) if face else None
+                else:
+                    # DeepFace returned numpy array directly
+                    face_array = face
+                
+                if face_array is None or not hasattr(face_array, 'shape'):
+                    return False, "❌ Invalid face data detected. Please try again.", []
+                
+                # Ensure detected face is large enough for reliable recognition
+                if face_array.shape[0] < self.min_face_size[0] or face_array.shape[1] < self.min_face_size[1]:
                     return False, "❌ Face too small - please move closer to the camera", []
                 
-                return True, "✅ Face detected - good quality", faces
+                # UX_IMPROVEMENT: Success message and green rectangle
+                return True, "✅ Face Detected! Press SPACE to capture.", faces
                 
+        except ValueError as e:
+            # CRITICAL: Catch the specific OpenCV data files error
+            if 'haarcascade' in str(e).lower():
+                error_msg = "❌ OpenCV data files missing! Your OpenCV installation is corrupt."
+                print(f"\n🚨 CRITICAL ERROR: {error_msg}")
+                print("💡 SOLUTION: Run the following commands to fix:")
+                print("   conda activate faceAuth")
+                print("   pip uninstall -y opencv-python opencv-python-headless")
+                print("   pip install --no-cache-dir opencv-python>=4.8.0")
+                print("   python main.py setup")
+                return False, error_msg + " Run 'python main.py setup' to fix.", []
+            else:
+                # Handle other ValueErrors from DeepFace
+                error_msg = f"❌ Face detection error: {str(e)}"
+                print(f"\n⚠️  Face detection error: {e}")
+                return False, error_msg, []
         except Exception as e:
-            return False, f"❌ Face detection error: {str(e)}", []
+            # Catch any other unexpected errors
+            error_msg = f"❌ Unexpected error in face detection: {str(e)}"
+            print(f"\n💥 Unexpected face detection error: {e}")
+            traceback.print_exc()  # Keep detailed logging for debugging
+            return False, error_msg, []
     
     def _draw_feedback(self, frame: np.ndarray, message: str, is_valid: bool) -> np.ndarray:
         """
-        Draw real-time feedback on the frame.
+        Draw real-time feedback on the frame with improved text handling.
         
         Args:
             frame: Input frame
@@ -122,27 +163,36 @@ class FaceEnroller:
         
         # Draw rectangle for face area guide
         height, width = frame.shape[:2]
+        # Rectangle covers central region where user should position their face
         face_area = (
             int(width * 0.25), int(height * 0.2),
             int(width * 0.75), int(height * 0.8)
         )
         
-        color = (0, 255, 0) if is_valid else (0, 0, 255)
+        # HARDENED: Rectangle color explicitly reflects detection status
+        rect_color = (0, 255, 0) if is_valid else (0, 0, 255)  # Green for valid, Red for error
         cv2.rectangle(display_frame, 
                      (face_area[0], face_area[1]), 
                      (face_area[2], face_area[3]), 
-                     color, 2)
+                     rect_color, 2)
         
-        # Draw center crosshair
+        # Draw center crosshair for alignment
         center_x, center_y = width // 2, height // 2
         cv2.line(display_frame, (center_x - 20, center_y), (center_x + 20, center_y), (255, 255, 255), 2)
         cv2.line(display_frame, (center_x, center_y - 20), (center_x, center_y + 20), (255, 255, 255), 2)
         
-        # Draw message
-        cv2.putText(display_frame, message, (10, 30), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+        # HARDENED: Multi-line message support for better error display
+        message_color = (0, 255, 0) if is_valid else (0, 0, 255)
+        y0, dy = 30, 25
+        message_lines = message.split('! ')  # Split on '! ' for natural line breaks
+        for i, line in enumerate(message_lines):
+            if line.strip():  # Only draw non-empty lines
+                y = y0 + i * dy
+                if y < height - 50:  # Ensure text stays within frame
+                    cv2.putText(display_frame, line, (10, y), 
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.6, message_color, 2)
         
-        # Draw instructions
+        # Draw instructions at the bottom
         instructions = [
             "Instructions:",
             "- Position your face in the green rectangle",
@@ -171,7 +221,7 @@ class FaceEnroller:
             frame_count = 0
             
             print("🎯 Face capture started. Position yourself in front of the camera...")
-            print("📸 Press SPACE when you see '✅ Face detected' message")
+            print("📸 Press SPACE when you see '✅ Face Detected' message")
             print("❌ Press ESC to cancel enrollment")
             
             while True:
@@ -189,7 +239,7 @@ class FaceEnroller:
                     # Use previous results
                     pass
                 
-                # Draw feedback
+                # Draw feedback overlay with current detection status
                 display_frame = self._draw_feedback(frame, message, is_valid)
                 
                 # Show the frame
@@ -205,7 +255,7 @@ class FaceEnroller:
                     if is_valid and len(faces) > 0:
                         print("📸 Capturing face in 3 seconds...")
                         
-                        # Countdown
+                        # Countdown before final capture
                         for i in range(3, 0, -1):
                             ret, frame = cap.read()
                             if ret:
@@ -216,7 +266,7 @@ class FaceEnroller:
                                 cv2.imshow('FaceAuth - Face Enrollment', countdown_frame)
                                 cv2.waitKey(1000)
                         
-                        # Final capture
+                        # Final capture after countdown
                         ret, final_frame = cap.read()
                         if ret:
                             final_frame = cv2.flip(final_frame, 1)

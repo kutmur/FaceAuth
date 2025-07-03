@@ -1,3 +1,60 @@
+# 🚀 Quick Start
+
+1.  **Clone the repository:**
+    ```bash
+    git clone <your-repo-url>
+    cd FaceAuth
+    ```
+2.  **Create a virtual environment (Recommended):**
+    ```bash
+    python3 -m venv venv
+    source venv/bin/activate  # Linux/Mac
+    # or venv\Scripts\activate  # Windows
+    ```
+3.  **Install Basic Dependencies First:**
+    ```bash
+    # Install minimal dependencies to bootstrap the setup command
+    pip install opencv-python>=4.8.0 click
+    ```
+    
+4.  **🔧 Run the Automated Setup and Repair Command**
+    
+    ### ⚠️ THIS IS THE MOST IMPORTANT STEP ⚠️
+    
+    This command will clean your environment and install all necessary dependencies correctly.
+    It performs aggressive cleanup of conflicting packages (especially OpenCV variants) and
+    ensures a fresh, working installation.
+
+    ```bash
+    python main.py setup
+    ```
+    
+4.  **🔧 Run the Automated Setup and Repair Command**
+    
+    ### ⚠️ THIS IS THE MOST IMPORTANT STEP ⚠️
+    
+    This command will clean your environment and install all necessary dependencies correctly.
+    It performs aggressive cleanup of conflicting packages (especially OpenCV variants) and
+    ensures a fresh, working installation.
+
+    ```bash
+    python main.py setup
+    ```
+    
+    **💡 If you ever encounter ANY error, run this command again to fix it.**
+    
+    The setup command is your one-stop solution for:
+    - ✅ Cleaning conflicting OpenCV installations
+    - ✅ Upgrading pip to latest version  
+    - ✅ Installing all dependencies correctly
+    - ✅ Fixing environment issues automatically
+
+5.  **Enroll your face:**
+    Once setup is complete, you can enroll your face.
+    ```bash
+    python main.py enroll
+    ```
+
 # 🔐 FaceAuth
 
 ```
@@ -34,7 +91,6 @@
 **FaceAuth** is a privacy-first face authentication system that turns your face into a secure key for protecting your files. Unlike cloud-based solutions, FaceAuth runs entirely on your local machine, ensuring your biometric data never leaves your computer.
 
 **Core Principles:**
-- � **100% Local**: Everything runs on your machine
 - 🔒 **Privacy-First**: No cloud, no tracking, no data sharing
 - 🧠 **AI-Powered**: Advanced face recognition with multiple models
 - 🛡️ **Military-Grade Security**: AES-256 encryption with PBKDF2
@@ -46,10 +102,10 @@
 
 - 🎯 **Face Enrollment**: Register your face with real-time feedback and quality validation
 - 🔓 **Face Verification**: Instant identity verification via webcam
-- � **File Encryption**: Encrypt any file using your face as the key
+- 🔓 **File Encryption**: Encrypt any file using your face as the key
 - 🔓 **File Decryption**: Decrypt files with face authentication
-- � **CLI Interface**: Simple, powerful command-line tools
-- � **Secure Storage**: Military-grade AES-256-GCM encryption
+- 💻 **CLI Interface**: Simple, powerful command-line tools
+- 🔐 **Secure Storage**: Military-grade AES-256-GCM encryption
 - 🌐 **Offline First**: Zero network dependencies
 - 🔧 **Multiple AI Models**: Facenet, ArcFace, VGG-Face support
 
@@ -405,7 +461,7 @@ A: FaceAuth uses industry-standard encryption, but we recommend using it as part
 
 ---
 
-## �️ Troubleshooting
+## 🛠️ Troubleshooting
 
 ### Common Issues
 
@@ -440,7 +496,7 @@ pip install -r requirements.txt --force-reinstall
 
 ---
 
-## � License
+## 📄 License
 
 Distributed under the MIT License. See `LICENSE` file for more information.
 
@@ -481,7 +537,7 @@ Built with ❤️ for privacy and security.
 
 ---
 
-## � Links
+## 🔗 Links
 
 - **Documentation**: [Read the full docs](TESTING.md)
 - **Issues**: [Report bugs or request features](https://github.com/yourusername/FaceAuth/issues)
@@ -615,5 +671,3 @@ We believe security through transparency. Our code is open source, our methods a
 4. Contact us with specific concerns
 
 **Remember**: The most secure system is one you understand and control. That's why FaceAuth puts you in charge of your own security.
-
----

@@ -1,0 +1,6 @@
+Collecting opencv-python
+  Using cached opencv_python-4.11.0.86-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (20 kB)
+Requirement already satisfied: click in /home/halil/miniconda3/envs/faceAuth/lib/python3.9/site-packages (8.1.8)
+Requirement already satisfied: numpy>=1.17.0 in /home/halil/miniconda3/envs/faceAuth/lib/python3.9/site-packages (from opencv-python) (2.0.2)
+Downloading opencv_python-4.11.0.86-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (63.0 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╸  61.1/63.0 MB 450.2 kB/s eta 0:00:05
