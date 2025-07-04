@@ -517,9 +517,9 @@ def decrypt_file(encrypted_file_path: str, password: str, output_path: str = Non
                 with open(input_path, 'rb') as input_file:
                     # Read file format header
                     salt = input_file.read(16)
-                    encrypted_file_key = input_file.read(28)
+                    encrypted_file_key = input_file.read(60)
                     
-                    if len(salt) != 16 or len(encrypted_file_key) != 28:
+                    if len(salt) != 16 or len(encrypted_file_key) != 60:
                         raise FileEncryptionError("Invalid file format: corrupted header")
                     
                     # Derive password key using stored salt
