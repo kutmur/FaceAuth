@@ -384,8 +384,7 @@ def encrypt_file(file_path: str, password: str, use_chunked_processing: bool = T
         
         # Check file size
         file_size = input_path.stat().st_size
-        if file_size == 0:
-            raise FileEncryptionError("Cannot encrypt empty file. The file must contain data to be encrypted.")
+        # Allow empty files to be encrypted. Empty content will be treated as an empty byte string.
         
         # Step 1: Generate random File Key
         file_key = generate_file_key()
