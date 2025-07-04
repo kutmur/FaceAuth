@@ -344,7 +344,7 @@ def encrypt_file(filename, user_id, model, data_dir):
             click.echo("\n❌ AUTHENTICATION FAILED")
             click.echo("🚫 File encryption requires successful face verification")
             click.echo("\n💡 Troubleshooting:")
-            click.echo("• Ensure you are enrolled: python main.py enroll-face")
+            click.echo("• Ensure you are enrolled: python main.py enroll")
             click.echo("• Check lighting and camera positioning")
             click.echo("• Verify your password is correct")
             sys.exit(1)
