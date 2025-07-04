@@ -448,7 +448,7 @@ class FaceAuthGUI:
                                             "Enter your password:",
                                             show='*')
             
-            self.root.after(0, lambda: self._complete_encryption(file_path, get_password()))
+            self.root.after(0, lambda: self._complete_encryption(file_path, get_password))
             
         except Exception as e:
             self.status_queue.put({
