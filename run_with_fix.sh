@@ -17,7 +17,7 @@ export OPENCV_VIDEOIO_DEBUG=1
 echo "✅ Environment configured!"
 echo "🚀 Running FaceAuth enrollment..."
 echo "📋 Any detailed errors will be shown below:"
-echo "=" * 60
+printf '=%.0s' {1..60}
 
 # Run the enrollment command
 python main.py enroll
