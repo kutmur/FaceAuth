@@ -1,0 +1,35 @@
+# FaceAuth Production Dependencies
+
+# =====================
+# Core Functionality
+# =====================
+click>=8.0.0  # CLI Framework
+cryptography>=41.0.0  # Encryption/Decryption
+
+# =====================
+# Computer Vision & Face Recognition
+# =====================
+# CRITICAL: Only opencv-python is supported. Do NOT install opencv-python-headless or opencv-contrib-python
+# as they will cause the ValueError: Expected path haarcascade_frontalface_default.xml violated error.
+opencv-python>=4.8.0  # Webcam and image processing - MUST be this package only
+deepface>=0.0.79  # Face recognition and embedding
+numpy>=1.21.0  # Array operations
+scipy>=1.9.0  # Embedding comparison
+Pillow>=9.0.0  # Image processing
+
+# =====================
+# Deep Learning Backend (Choose ONE TensorFlow option)
+# =====================
+# Option 1 (RECOMMENDED): CPU-only version for most users
+tensorflow-cpu>=2.13.0
+# Option 2: GPU-enabled version (requires NVIDIA GPU + CUDA)
+# tensorflow>=2.13.0
+# tf-keras>=2.13.0
+
+# =====================
+# IMPORTANT NOTES
+# =====================
+# - opencv-python-headless and opencv-contrib-python WILL BREAK the installation
+# - If you encounter OpenCV errors, run: python main.py setup
+# - The setup command will clean and reinstall all dependencies correctly
+# - For most users, the CPU version of TensorFlow is sufficient and easier to install
