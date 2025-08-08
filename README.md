@@ -1,4 +1,4 @@
-# 🚀 Quick Start
+# Quick Start
 
 1.  **Clone the repository:**
     ```bash
@@ -17,21 +17,9 @@
     pip install opencv-python>=4.8.0 click
     ```
     
-4.  **🔧 Run the Automated Setup and Repair Command**
+4.  ** Run the Automated Setup and Repair Command**
     
-    ### ⚠️ THIS IS THE MOST IMPORTANT STEP ⚠️
-    
-    This command will clean your environment and install all necessary dependencies correctly.
-    It performs aggressive cleanup of conflicting packages (especially OpenCV variants) and
-    ensures a fresh, working installation.
-
-    ```bash
-    python main.py setup
-    ```
-    
-4.  **🔧 Run the Automated Setup and Repair Command**
-    
-    ### ⚠️ THIS IS THE MOST IMPORTANT STEP ⚠️
+    ### THIS IS THE MOST IMPORTANT STEP
     
     This command will clean your environment and install all necessary dependencies correctly.
     It performs aggressive cleanup of conflicting packages (especially OpenCV variants) and
@@ -41,7 +29,19 @@
     python main.py setup
     ```
     
-    **💡 If you ever encounter ANY error, run this command again to fix it.**
+4.  ** Run the Automated Setup and Repair Command**
+    
+    ### THIS IS THE MOST IMPORTANT STEP 
+    
+    This command will clean your environment and install all necessary dependencies correctly.
+    It performs aggressive cleanup of conflicting packages (especially OpenCV variants) and
+    ensures a fresh, working installation.
+
+    ```bash
+    python main.py setup
+    ```
+    
+    ** If you ever encounter ANY error, run this command again to fix it.**
     
     The setup command is your one-stop solution for:
     - ✅ Cleaning conflicting OpenCV installations
@@ -55,18 +55,18 @@
     python main.py enroll
     ```
 
-# 🔐 FaceAuth
+#  FaceAuth
 
 ```
-███████╗ █████╗  ██- 🎯 **Face Enrollment**: Register your face with real-time feedback and quality validation
-- 🔓 **Face Verification**: Instant identity verification via webcam
-- 📁 **File Encryption**: Encrypt any file using your face as the key
-- 🔓 **File Decryption**: Decrypt files with face authentication
-- 💻 **CLI Interface**: Simple, powerful command-line tools
-- 🖥️ **GUI Interface**: User-friendly graphical interface (NEW!)
-- 🔐 **Secure Storage**: Military-grade AES-256-GCM encryption
-- 🌐 **Offline First**: Zero network dependencies
-- 🔧 **Multiple AI Models**: Facenet, ArcFace, VGG-Face support████╗     █████╗ ██╗   ██╗████████╗██╗  ██╗
+███████╗ █████╗  ██- **Face Enrollment**: Register your face with real-time feedback and quality validation
+-  **Face Verification**: Instant identity verification via webcam
+-  **File Encryption**: Encrypt any file using your face as the key
+-  **File Decryption**: Decrypt files with face authentication
+-  **CLI Interface**: Simple, powerful command-line tools
+-  **GUI Interface**: User-friendly graphical interface (NEW!)
+-  **Secure Storage**: Military-grade AES-256-GCM encryption
+-  **Offline First**: Zero network dependencies
+-  **Multiple AI Models**: Facenet, ArcFace, VGG-Face support████╗     █████╗ ██╗   ██╗████████╗██╗  ██╗
 ██╔════╝██╔══██╗██╔════╝██╔════╝    ██╔══██╗██║   ██║╚══██╔══╝██║  ██║
 █████╗  ███████║██║     █████╗      ███████║██║   ██║   ██║   ███████║
 ██╔══╝  ██╔══██║██║     ██╔══╝      ██╔══██║██║   ██║   ██║   ██╔══██║
@@ -86,32 +86,32 @@
 
 ---
 
-## 🚀 Overview
+## Overview
 
 **FaceAuth** is a privacy-first face authentication system that turns your face into a secure key for protecting your files. Unlike cloud-based solutions, FaceAuth runs entirely on your local machine, ensuring your biometric data never leaves your computer.
 
 **Core Principles:**
-- 🔒 **Privacy-First**: No cloud, no tracking, no data sharing
-- 🧠 **AI-Powered**: Advanced face recognition with multiple models
-- 🛡️ **Military-Grade Security**: AES-256 encryption with PBKDF2
-- ⚡ **Lightning Fast**: Sub-2-second authentication
+-  **Privacy-First**: No cloud, no tracking, no data sharing
+-  **AI-Powered**: Advanced face recognition with multiple models
+-  **Military-Grade Security**: AES-256 encryption with PBKDF2
+-  **Lightning Fast**: Sub-2-second authentication
 
 ---
 
-## ✨ Features
+## Features
 
-- 🎯 **Face Enrollment**: Register your face with real-time feedback and quality validation
-- 🔓 **Face Verification**: Instant identity verification via webcam
-- 🔓 **File Encryption**: Encrypt any file using your face as the key
-- 🔓 **File Decryption**: Decrypt files with face authentication
-- 💻 **CLI Interface**: Simple, powerful command-line tools
-- 🔐 **Secure Storage**: Military-grade AES-256-GCM encryption
-- 🌐 **Offline First**: Zero network dependencies
-- 🔧 **Multiple AI Models**: Facenet, ArcFace, VGG-Face support
+-  **Face Enrollment**: Register your face with real-time feedback and quality validation
+-  **Face Verification**: Instant identity verification via webcam
+-  **File Encryption**: Encrypt any file using your face as the key
+-  **File Decryption**: Decrypt files with face authentication
+-  **CLI Interface**: Simple, powerful command-line tools
+-  **Secure Storage**: Military-grade AES-256-GCM encryption
+-  **Offline First**: Zero network dependencies
+-  **Multiple AI Models**: Facenet, ArcFace, VGG-Face support
 
 ---
 
-## ⚙️ How It Works
+##  How It Works
 
 ```
 [User Enrolls Face] 
@@ -139,7 +139,7 @@
 
 ---
 
-## 🛠️ Installation
+##  Installation
 
 ### Prerequisites
 - **Python 3.8+** 
@@ -168,11 +168,11 @@ python setup.py
 
 ---
 
-## ⚡️ Usage
+##  Usage
 
 FaceAuth offers both command-line and graphical interfaces:
 
-### 🖥️ GUI Interface (Recommended for Beginners)
+###  GUI Interface (Recommended for Beginners)
 
 Launch the user-friendly graphical interface:
 
@@ -181,11 +181,11 @@ python main.py --gui
 ```
 
 The GUI provides:
-- 🎯 **Intuitive buttons** for each operation
-- 📁 **File dialogs** for easy file selection  
-- ⏱️ **Real-time status** updates
-- 🚨 **Clear error** messages
-- 📖 **Built-in help** and tooltips
+-  **Intuitive buttons** for each operation
+-  **File dialogs** for easy file selection  
+-  **Real-time status** updates
+-  **Clear error** messages
+-  **Built-in help** and tooltips
 
 **GUI Workflow:**
 1. Launch GUI with `python main.py --gui`
