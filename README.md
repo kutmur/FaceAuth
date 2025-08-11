@@ -44,10 +44,10 @@
     ** If you ever encounter ANY error, run this command again to fix it.**
     
     The setup command is your one-stop solution for:
-    - ✅ Cleaning conflicting OpenCV installations
-    - ✅ Upgrading pip to latest version  
-    - ✅ Installing all dependencies correctly
-    - ✅ Fixing environment issues automatically
+    -  Cleaning conflicting OpenCV installations
+    -  Upgrading pip to latest version  
+    -  Installing all dependencies correctly
+    -  Fixing environment issues automatically
 
 5.  **Enroll your face:**
     Once setup is complete, you can enroll your face.
@@ -198,7 +198,7 @@ The GUI provides:
 
 FaceAuth uses a simple command-line interface. Here are the core commands:
 
-### 🎯 **Enroll Your Face**
+###  **Enroll Your Face**
 Register your face for the first time:
 
 ```bash
@@ -214,7 +214,7 @@ python main.py enroll-face --user-id alice --model ArcFace
 
 **What happens:** Opens webcam → Detects your face → Guides positioning → Captures on SPACE → Encrypts & saves locally
 
-### 🔓 **Verify Your Identity**
+###  **Verify Your Identity**
 Test face authentication:
 
 ```bash
@@ -227,7 +227,7 @@ python main.py verify-face --user-id john_doe
 
 **What happens:** Opens webcam → Detects face → Compares with stored data → Shows success/failure
 
-### 🔐 **Encrypt Files**
+###  **Encrypt Files**
 Protect files with face authentication:
 
 ```bash
@@ -240,7 +240,7 @@ python main.py encrypt-file document.pdf --output secure_doc.faceauth
 
 **What happens:** Face verification → Password prompt → File encrypted → Creates .faceauth file
 
-### 🔓 **Decrypt Files**
+###  **Decrypt Files**
 Unlock your protected files:
 
 ```bash
@@ -253,7 +253,7 @@ python main.py decrypt-file secure_doc.faceauth --output recovered_document.pdf
 
 **What happens:** Face verification → Password prompt → File decrypted → Original file restored
 
-### ℹ️ **System Information**
+###  **System Information**
 ```bash
 # Check system status
 python main.py info
@@ -263,15 +263,15 @@ python main.py --help
 ```
 ---
 
-## 🔒 Security & Privacy
+##  Security & Privacy
 
-### 🛡️ **Our Privacy Promise**
+###  **Our Privacy Promise**
 
 **Your biometric data NEVER leaves your computer. Period.**
 
 FaceAuth is built on an unwavering commitment to privacy. We believe your face is your most personal identifier and should remain under your complete control.
 
-### 📊 **What Data is Stored?**
+###  **What Data is Stored?**
 
 FaceAuth creates only minimal, encrypted data on your machine:
 
@@ -286,7 +286,7 @@ FaceAuth creates only minimal, encrypted data on your machine:
    - Created only when you choose to encrypt files
    - Stored wherever you specify
 
-### 🔐 **How is Your Data Secured?**
+###  **How is Your Data Secured?**
 
 **Military-Grade Encryption:**
 - **AES-256-GCM**: Same encryption used by governments and banks
@@ -300,17 +300,17 @@ FaceAuth creates only minimal, encrypted data on your machine:
 - Would require exact AI model + training data to reverse
 - Even if decrypted, only shows numbers like `[0.23, -0.85, 1.42...]`
 
-### ❌ **What We NEVER Do**
+###  **What We NEVER Do**
 
-- ❌ Store raw images of your face
-- ❌ Store your passwords
-- ❌ Send data over the internet
-- ❌ Connect to cloud services
-- ❌ Share data with third parties
-- ❌ Log your biometric information
-- ❌ Install system-wide components
+-  Store raw images of your face
+-  Store your passwords
+-  Send data over the internet
+-  Connect to cloud services
+-  Share data with third parties
+-  Log your biometric information
+-  Install system-wide components
 
-### 📍 **Where is Your Data?**
+###  **Where is Your Data?**
 
 All data stays in your FaceAuth directory:
 
@@ -324,9 +324,9 @@ FaceAuth/
 
 **Complete transparency:** No hidden files, no system modifications, no registry entries.
 
-### 🔒 **Threat Model**
+###  **Threat Model**
 
-**✅ Protected Against:**
+** Protected Against:**
 - Computer theft or unauthorized access
 - Malware scanning your files
 - Network interception (nothing to intercept!)
@@ -334,12 +334,12 @@ FaceAuth/
 - Corporate surveillance
 - Cloud provider breaches
 
-**⚠️ Not Protected Against:**
+** Not Protected Against:**
 - Someone watching you enter your password
 - Sophisticated state-level attacks on your device
 - Physical access while you're logged in
 
-### 🏛️ **Privacy Compliance**
+###  **Privacy Compliance**
 
 Designed to comply with:
 - **GDPR**: Local processing with user consent
@@ -349,7 +349,7 @@ Designed to comply with:
 
 ---
 
-## 🧪 Testing
+##  Testing
 
 FaceAuth includes a comprehensive test suite to ensure reliability:
 
@@ -376,23 +376,23 @@ The test suite includes:
 
 ---
 
-## 🎯 Roadmap
+## Roadmap
 
-### ✅ **Current (MVP)**
+###  **Current (MVP)**
 - Face enrollment with real-time feedback
 - Secure local storage with AES-256 encryption
 - Face verification system
 - File encryption/decryption
 - CLI interface
 
-### 🔄 **Coming Soon**
+###  **Coming Soon**
 - GUI interface for non-technical users
 - Batch file operations
 - Advanced authentication options
 - Mobile companion app
 - Enterprise deployment tools
 
-### 🚀 **Future Vision**
+###  **Future Vision**
 - Browser integration
 - API for developers
 - Advanced biometric features
@@ -401,7 +401,7 @@ The test suite includes:
 
 ---
 
-## 🤝 Contributing
+##  Contributing
 
 We welcome contributions! Here's how to get started:
 
@@ -424,14 +424,14 @@ pytest
 # Make your changes and submit a PR!
 ```
 
-### 🐛 **Bug Reports**
+###  **Bug Reports**
 Found a bug? Please open an issue with:
 - Your OS and Python version
 - Steps to reproduce
 - Expected vs actual behavior
 - Any error messages
 
-### 💡 **Feature Requests**
+###  **Feature Requests**
 Have an idea? We'd love to hear it! Please include:
 - Use case description
 - Proposed implementation
@@ -439,7 +439,7 @@ Have an idea? We'd love to hear it! Please include:
 
 ---
 
-## ❓ FAQ
+##  FAQ
 
 **Q: Can someone steal my face data and impersonate me?**
 A: No. Face embeddings are mathematical abstractions that cannot be converted back to images or used with other systems.
@@ -461,7 +461,7 @@ A: FaceAuth uses industry-standard encryption, but we recommend using it as part
 
 ---
 
-## 🛠️ Troubleshooting
+##  Troubleshooting
 
 ### Common Issues
 
@@ -496,7 +496,7 @@ pip install -r requirements.txt --force-reinstall
 
 ---
 
-## 📄 License
+##  License
 
 Distributed under the MIT License. See `LICENSE` file for more information.
 
@@ -526,7 +526,7 @@ SOFTWARE.
 
 ---
 
-## 🙏 Acknowledgments
+##  Acknowledgments
 
 - **[DeepFace](https://github.com/serengil/deepface)**: Excellent face recognition framework
 - **[OpenCV](https://opencv.org/)**: Computer vision library
@@ -537,7 +537,7 @@ Built with ❤️ for privacy and security.
 
 ---
 
-## 🔗 Links
+##  Links
 
 - **Documentation**: [Read the full docs](TESTING.md)
 - **Issues**: [Report bugs or request features](https://github.com/yourusername/FaceAuth/issues)
@@ -546,34 +546,34 @@ Built with ❤️ for privacy and security.
 
 ---
 
-**⭐ If FaceAuth helps you secure your data, please star this repository!**
+** If FaceAuth helps you secure your data, please star this repository!**
 
 **Made with ❤️ by developers who believe in privacy.**
 
 ### How Is Your Data Secured?
 
-**🔬 Face Embedding Process:**
+** Face Embedding Process:**
 Your face is never stored as a picture. Instead, FaceAuth uses advanced AI to convert your face into a "face embedding"—a mathematical code made of numbers that represents the unique patterns of your facial features. Think of it like a numerical fingerprint that can't be turned back into a photo.
 
-**🔐 Military-Grade Encryption:**
+** Military-Grade Encryption:**
 - Your face embedding is encrypted using AES-256-GCM (the same encryption used by governments and banks)
 - Your password is your master key—we use it to encrypt your face data and protect your files
 - Each file gets its own unique encryption key for maximum security
 - We use PBKDF2 with 100,000 iterations to make password attacks extremely difficult
 
-**🔑 Zero Password Storage:**
+** Zero Password Storage:**
 We never store your password anywhere. It exists only in your computer's memory when you're using it, then it's gone. This means even if someone gets your encrypted files, they can't access them without your password.
 
 ### What Data Is NEVER Stored or Sent?
 
 We want to be crystal clear about what FaceAuth will never do:
 
-- ❌ **Never store raw images of your face** - Only mathematical embeddings
-- ❌ **Never store your password** - Only derived encryption keys
-- ❌ **Never send data over the internet** - Zero network activity
-- ❌ **Never connect to the cloud** - Everything runs locally
-- ❌ **Never share data with third parties** - No external services
-- ❌ **Never log your biometric data** - Privacy by design
+-  **Never store raw images of your face** - Only mathematical embeddings
+-  **Never store your password** - Only derived encryption keys
+-  **Never send data over the internet** - Zero network activity
+-  **Never connect to the cloud** - Everything runs locally
+-  **Never share data with third parties** - No external services
+-  **Never log your biometric data** - Privacy by design
 
 ### Where Is Your Data Stored?
 
@@ -595,12 +595,12 @@ your-faceauth-folder/
 
 ### How Secure Is This Really?
 
-**🛡️ Cryptographic Strength:**
+** Cryptographic Strength:**
 - **AES-256-GCM**: Used by the U.S. government for TOP SECRET information
 - **PBKDF2**: Industry standard for password security (100,000 iterations)
 - **Authenticated Encryption**: Detects if anyone tampers with your files
 
-**🔍 Face Reconstruction Prevention:**
+** Face Reconstruction Prevention:**
 Face embeddings are mathematical abstractions that cannot be reversed into images. Even if an attacker:
 - Decrypts your face data
 - Has advanced technical skills
@@ -608,7 +608,7 @@ Face embeddings are mathematical abstractions that cannot be reversed into image
 
 They would only see a list of numbers like `[0.23, -0.85, 1.42, ...]` that represent abstract facial features—not your actual face.
 
-**🔒 Defense in Depth:**
+** Defense in Depth:**
 1. **Layer 1**: Face embedding (not an image)
 2. **Layer 2**: AES-256 encryption
 3. **Layer 3**: Password-based key derivation
@@ -636,7 +636,7 @@ All dependencies run locally—none make network connections for FaceAuth operat
 
 ### Threat Model: What We Protect Against
 
-✅ **Protected Scenarios:**
+ **Protected Scenarios:**
 - Someone steals your computer
 - Malware scans your files
 - Hackers breach your network
@@ -645,7 +645,7 @@ All dependencies run locally—none make network connections for FaceAuth operat
 - Cloud provider breaches
 - Internet service provider monitoring
 
-⚠️ **Not Protected Against:**
+ **Not Protected Against:**
 - Someone watching you enter your password
 - Physical access while you're logged in
 - Keyloggers capturing your password
